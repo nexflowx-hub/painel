@@ -128,7 +128,8 @@ function ApiKeysTab() {
     setLoading(true);
     try {
       const res = await api.apiKeys.list();
-      setKeys(res.data || []);
+      // API client unwraps { data: ... }, so res is ApiKey[] directly
+      setKeys(Array.isArray(res) ? res : []);
     } catch {
       setKeys([]);
     } finally {
@@ -141,9 +142,9 @@ function ApiKeysTab() {
   const handleCreate = async () => {
     setCreating(true);
     try {
-      const res: CreateApiKeyResponse = await api.apiKeys.create('NeXFlowX API Key');
-      if (res?.data?.key) {
-        setNewKey(res.data.key);
+      const res: CreateApiKeyResponse = await api.apiKeys.create('Atlas GP API Key');
+      if (res?.key) {
+        setNewKey(res.key);
         loadKeys();
       }
     } catch {
@@ -251,7 +252,7 @@ function WebhooksTab() {
             <input
               type="url"
               className="neon-input w-full rounded-lg px-4 py-3 text-sm nex-mono"
-              placeholder="https://seu-servidor.com/webhook/nexflowx"
+              placeholder="https://seu-servidor.com/webhook/atlasgp"
             />
           </div>
           <div className="space-y-2">
@@ -260,7 +261,7 @@ function WebhooksTab() {
               <input
                 type="text"
                 className="neon-input flex-1 rounded-lg px-4 py-3 text-sm nex-mono"
-                placeholder="nexflowx_whsec_••••••••"
+                placeholder="atlasgp_whsec_••••••••"
                 defaultValue=""
                 readOnly
               />
@@ -324,26 +325,35 @@ function GettingStartedTab() {
 
 /* ─── API Reference Tab ─── */
 function ApiReferenceTab() {
+  const { user } = useAuthStore();
+  const admin = isAdmin(user);
+
   const endpoints = [
-    { method: 'POST', path: '/auth/login', desc: 'Autenticação', color: '#00D4AA' },
     { method: 'GET', path: '/wallets', desc: 'Listar carteiras', color: '#00B4D8' },
     { method: 'POST', path: '/swap', desc: 'Executar câmbio', color: '#FFB800' },
     { method: 'POST', path: '/payout', desc: 'Solicitar levantamento', color: '#FFB800' },
+    { method: 'POST', path: '/deposits', desc: 'Criar depósito', color: '#00D4AA' },
     { method: 'POST', path: '/payment-links', desc: 'Gerar link de pagamento', color: '#00D4AA' },
+    { method: 'GET', path: '/stores', desc: 'Listar lojas', color: '#00B4D8' },
+    { method: 'GET', path: '/settings/gateways', desc: 'Listar gateways', color: '#00B4D8' },
     { method: 'GET', path: '/ledger', desc: 'Consultar ledger', color: '#00B4D8' },
     { method: 'GET', path: '/action-tickets', desc: 'Listar tickets de aprovação', color: '#00B4D8' },
     { method: 'POST', path: '/action-tickets/:id/approve', desc: 'Aprovar ticket', color: '#00D4AA' },
     { method: 'GET', path: '/api-keys', desc: 'Listar chaves API', color: '#00B4D8' },
     { method: 'POST', path: '/api-keys', desc: 'Criar chave API', color: '#00D4AA' },
+    { method: 'GET', path: '/users/me', desc: 'Obter perfil do utilizador', color: '#A855F7' },
     { method: 'PATCH', path: '/users/me', desc: 'Atualizar perfil', color: '#A855F7' },
-    { method: 'POST', path: '/users/me/password', desc: 'Alterar palavra-passe', color: '#A855F7' },
+    ...(admin ? [
+      { method: 'GET', path: '/admin/users', desc: 'Listar utilizadores (Admin)', color: '#FFB800' },
+      { method: 'GET', path: '/admin/payouts/pending', desc: 'Levantamentos pendentes (Admin)', color: '#FFB800' },
+    ] : []),
   ];
 
   return (
     <div className="glass-panel overflow-hidden">
       <div className="p-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
         <h4 className="text-sm font-semibold" style={{ color: '#FFFFFF' }}>API Reference</h4>
-        <p className="nex-mono text-[10px] mt-1" style={{ color: '#606060' }}>Base URL: api-dev.nexflowx.tech/api/v1</p>
+        <p className="nex-mono text-[10px] mt-1" style={{ color: '#606060' }}>Base URL: api.atlasglobal.digital/api/v1</p>
       </div>
       <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.02)' }}>
         {endpoints.map((ep) => (

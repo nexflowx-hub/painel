@@ -1,23 +1,29 @@
 /**
- * Atlas Global Payments — API Client V1.01 (NeXFlowX Engine)
+ * Atlas Global Payments — API Client V2.0 (NeXFlowX Engine)
  * BaaS (Banking as a Service) — Settlement Engine
+ *
+ * Key changes from V1:
+ * - Auth handled by Supabase (no /auth/* endpoints)
+ * - All responses unwrapped from { data: ... } automatically
+ * - Admin endpoints added
+ * - Token sourced from Supabase session
  */
 
 import type {
-  LoginRequest, LoginResponse, AuthMeResponse, WalletsResponse,
+  WalletsResponse,
   SwapRequest, SwapResponse, PayoutRequest, PayoutResponse,
   CreatePaymentLinkRequest, CreatePaymentLinkResponse, PaymentLinksResponse,
   LedgerResponse,
   ActionTicketsResponse, ApproveTicketResponse,
-  ChangePasswordRequest, ChangePasswordResponse,
   UpdateEmailRequest, UpdateEmailResponse,
   ApiKeysResponse, CreateApiKeyResponse,
   UserMeResponse, UpdateUserMeRequest, UpdateUserMeResponse,
   StoresResponse, GatewaysResponse, DepositRequest, DepositResponse,
+  AdminUsersResponse, AdminPendingPayoutsResponse,
   APIError,
 } from './contracts';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api-core.nexflowx.tech/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.atlasglobal.digital/api/v1';
 export const BACKEND_BASE_URL = API_BASE;
 
 export class NexFlowXAPIError extends Error {
@@ -32,7 +38,11 @@ export class NexFlowXAPIError extends Error {
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('nexflowx_token') : null;
+  // Get token from Supabase session instead of localStorage
+  const { supabase } = await import('@/lib/supabase');
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || null;
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -46,53 +56,46 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       body?.error?.code ?? 'UNKNOWN_ERROR'
     );
   }
-  return res.json() as Promise<T>;
+
+  // Unwrap the { data: ... } wrapper that the new backend applies to all responses
+  const json = await res.json();
+  // If the response has a `data` key, unwrap it; otherwise return as-is
+  if (json && typeof json === 'object' && 'data' in json) {
+    return (json as { data: T }).data as T;
+  }
+  return json as T;
 }
 
-export const auth = {
-  async login(data: LoginRequest): Promise<LoginResponse> {
-    const res = await request<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
-    if (typeof window !== 'undefined' && res.token) localStorage.setItem('nexflowx_token', res.token);
-    return res;
-  },
-  async logout(): Promise<void> {
-    try { await request('/auth/logout', { method: 'POST' }); } finally {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('nexflowx_token');
-        localStorage.removeItem('nexflowx_refresh');
-      }
-    }
-  },
-  async me(): Promise<AuthMeResponse> { return request('/auth/me'); },
-};
-
+/* ─── Wallets (3-Stage Settlement) ─── */
 export const wallets = {
   async list(): Promise<WalletsResponse> { return request('/wallets'); },
 };
 
+/* ─── Swap ─── */
 export const swap = {
   async execute(data: SwapRequest): Promise<SwapResponse> {
     return request('/swap', { method: 'POST', body: JSON.stringify(data) });
   },
 };
 
+/* ─── Payout ─── */
 export const payout = {
   async request(data: PayoutRequest): Promise<PayoutResponse> {
     return request('/payout', { method: 'POST', body: JSON.stringify(data) });
   },
 };
 
+/* ─── Deposits ─── */
 export const deposits = {
   async create(data: DepositRequest): Promise<DepositResponse> {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('nexflowx_token') : null;
     return request('/deposits', {
       method: 'POST',
-      headers: { ...(token ? { 'x-api-key': token } : {}) },
       body: JSON.stringify(data),
     });
   },
 };
 
+/* ─── Payment Links ─── */
 export const paymentLinks = {
   async list(): Promise<PaymentLinksResponse> { return request('/payment-links'); },
   async create(data: CreatePaymentLinkRequest): Promise<CreatePaymentLinkResponse> {
@@ -100,6 +103,23 @@ export const paymentLinks = {
   },
 };
 
+/* ─── Stores (Multi-Tenant) ─── */
+export const stores = {
+  async list(): Promise<StoresResponse> { return request('/stores'); },
+  async create(data: { name: string }): Promise<{ id: string; store_id: string }> {
+    return request('/stores', { method: 'POST', body: JSON.stringify(data) });
+  },
+};
+
+/* ─── Gateways ─── */
+export const gateways = {
+  async list(): Promise<GatewaysResponse> { return request('/settings/gateways'); },
+  async configure(data: { gateway_id: string; config: Record<string, unknown> }): Promise<{ success: boolean }> {
+    return request('/settings/gateways', { method: 'POST', body: JSON.stringify(data) });
+  },
+};
+
+/* ─── Ledger ─── */
 export const ledger = {
   async list(query: Record<string, string> = {}): Promise<LedgerResponse> {
     const params = new URLSearchParams(
@@ -109,6 +129,7 @@ export const ledger = {
   },
 };
 
+/* ─── Action Tickets ─── */
 export const actionTickets = {
   async list(): Promise<ActionTicketsResponse> { return request('/action-tickets'); },
   async approve(id: string): Promise<ApproveTicketResponse> {
@@ -116,15 +137,14 @@ export const actionTickets = {
   },
 };
 
+/* ─── Settings ─── */
 export const settings = {
-  async changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
-    return request('/users/me/password', { method: 'POST', body: JSON.stringify(data) });
-  },
   async updateEmail(data: UpdateEmailRequest): Promise<UpdateEmailResponse> {
     return request('/users/me', { method: 'PATCH', body: JSON.stringify(data) });
   },
 };
 
+/* ─── API Keys ─── */
 export const apiKeys = {
   async list(): Promise<ApiKeysResponse> { return request('/api-keys'); },
   async create(label?: string): Promise<CreateApiKeyResponse> {
@@ -132,6 +152,7 @@ export const apiKeys = {
   },
 };
 
+/* ─── Users ─── */
 export const users = {
   async getMe(): Promise<UserMeResponse> { return request('/users/me'); },
   async updateMe(data: UpdateUserMeRequest): Promise<UpdateUserMeResponse> {
@@ -139,18 +160,14 @@ export const users = {
   },
 };
 
-export const stores = {
-  async list(): Promise<StoresResponse> { return request('/stores'); },
-  async create(data: { name: string }): Promise<{ data: { id: string; store_id: string } }> {
-    return request('/stores', { method: 'POST', body: JSON.stringify(data) });
-  },
+/* ─── Admin ─── */
+export const admin = {
+  async listUsers(): Promise<AdminUsersResponse> { return request('/admin/users'); },
+  async pendingPayouts(): Promise<AdminPendingPayoutsResponse> { return request('/admin/payouts/pending'); },
 };
 
-export const gateways = {
-  async list(): Promise<GatewaysResponse> { return request('/settings/gateways'); },
-  async configure(data: { gateway_id: string; config: Record<string, unknown> }): Promise<{ success: boolean }> {
-    return request('/settings/gateways', { method: 'POST', body: JSON.stringify(data) });
-  },
+/* ─── Aggregated API export ─── */
+export const api = {
+  wallets, swap, payout, deposits, paymentLinks, stores, gateways,
+  ledger, actionTickets, settings, apiKeys, users, admin,
 };
-
-export const api = { auth, wallets, swap, payout, deposits, paymentLinks, stores, gateways, ledger, actionTickets, settings, apiKeys, users };

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthStore, IS_DEV_MODE } from '@/lib/auth-store';
-import { Eye, EyeOff, Loader2, Lock, User, Wifi, Terminal } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, Mail, Terminal, UserPlus, LogIn } from 'lucide-react';
 import { Logo3D } from '@/components/ui/logo-3d';
 
 /* ─── Canvas particle background ─── */
@@ -144,32 +144,46 @@ function FinancialCanvas() {
   );
 }
 
-/* ─── Login Page ─── */
+/* ─── Login / Register Page ─── */
 export default function LoginPage() {
-  const { login, isLoading, loginError } = useAuthStore();
-  const [username, setUsername] = useState('');
+  const { login, register, isLoading, loginError, registerError } = useAuthStore();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const check = async () => {
-      try {
-        const res = await fetch('/api/health?XTransformPort=3001', { signal: AbortSignal.timeout(3000) });
-        setBackendStatus(res.ok ? 'online' : 'offline');
-      } catch {
-        setBackendStatus('offline');
-      }
-    };
-    check();
-    const interval = setInterval(check, 15000);
-    return () => clearInterval(interval);
-  }, []);
+  const error = mode === 'login' ? loginError : registerError;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) return;
-    await login(username, password);
+    setLocalError(null);
+
+    if (!email || !password) return;
+
+    if (mode === 'register') {
+      if (password.length < 8) {
+        setLocalError('A palavra-passe deve ter pelo menos 8 caracteres.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setLocalError('As palavras-passe não coincidem.');
+        return;
+      }
+      await register(email, password);
+    } else {
+      await login(email, password);
+    }
+  };
+
+  const switchMode = (newMode: 'login' | 'register') => {
+    setMode(newMode);
+    setLocalError(null);
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
   };
 
   return (
@@ -212,27 +226,57 @@ export default function LoginPage() {
           )}
         </div>
 
-        {/* Login Card */}
+        {/* Login / Register Card */}
         <div className="glass-panel p-8 animate-fade-up-2">
+          {/* Mode toggle */}
+          <div className="flex mb-6 rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <button
+              type="button"
+              onClick={() => switchMode('login')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-medium transition-all nex-mono ${
+                mode === 'login'
+                  ? 'text-[#00D4AA]'
+                  : 'text-[#606060] hover:text-[#A0A0A0]'
+              }`}
+              style={mode === 'login' ? { background: 'rgba(0,212,170,0.06)' } : {}}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Login
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('register')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-medium transition-all nex-mono ${
+                mode === 'register'
+                  ? 'text-[#00D4AA]'
+                  : 'text-[#606060] hover:text-[#A0A0A0]'
+              }`}
+              style={mode === 'register' ? { background: 'rgba(0,212,170,0.06)' } : {}}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Registo
+            </button>
+          </div>
+
           <div className="nex-mono text-[10px] uppercase tracking-widest mb-6" style={{ color: '#606060' }}>
-            Autenticação de Acesso
+            {mode === 'login' ? 'Autenticação de Acesso' : 'Criar Nova Conta'}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
+            {/* Email */}
             <div className="space-y-2">
               <label className="nex-mono text-[11px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>
-                Utilizador
+                Email
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#606060' }} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#606060' }} />
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="neon-input w-full pl-10 pr-4 py-3 rounded-lg text-sm"
-                  placeholder='username@empresa.com'
-                  autoComplete="username"
+                  placeholder="utilizador@empresa.com"
+                  autoComplete="email"
                   required
                 />
               </div>
@@ -250,8 +294,8 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="neon-input w-full pl-10 pr-12 py-3 rounded-lg text-sm"
-                  placeholder='••••••••••••'
-                  autoComplete="current-password"
+                  placeholder="••••••••••••"
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   required
                 />
                 <button
@@ -266,8 +310,29 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Confirm Password (register only) */}
+            {mode === 'register' && (
+              <div className="space-y-2">
+                <label className="nex-mono text-[11px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>
+                  Confirmar Palavra-passe
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#606060' }} />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="neon-input w-full pl-10 pr-4 py-3 rounded-lg text-sm"
+                    placeholder="••••••••••••"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Error */}
-            {loginError && (
+            {(error || localError) && (
               <div
                 className="animate-fade-up rounded-lg px-4 py-3 text-sm"
                 style={{
@@ -276,23 +341,23 @@ export default function LoginPage() {
                   color: '#FF5252',
                 }}
               >
-                {loginError}
+                {localError || error}
               </div>
             )}
 
             {/* Submit */}
             <button
               type="submit"
-              disabled={isLoading || !username || !password}
+              disabled={isLoading || !email || !password || (mode === 'register' && !confirmPassword)}
               className="neon-btn-primary w-full py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  A autenticar...
+                  {mode === 'login' ? 'A autenticar...' : 'A criar conta...'}
                 </>
               ) : (
-                'Entrar na Plataforma'
+                mode === 'login' ? 'Entrar na Plataforma' : 'Criar Conta'
               )}
             </button>
           </form>
@@ -307,27 +372,6 @@ export default function LoginPage() {
               <Terminal className="w-3 h-3" />
               Dev bypass ativo — qualquer credencial aceite
             </div>
-          )}
-        </div>
-
-        {/* Backend status */}
-        <div className="animate-fade-up-3 mt-6 flex items-center justify-center gap-2 nex-mono text-[10px]" style={{ color: '#606060' }}>
-          <Wifi className="w-3 h-3" />
-          Backend:{' '}
-          {backendStatus === 'online' && (
-            <span className="flex items-center gap-1" style={{ color: '#00D4AA' }}>
-              <span className="status-dot active" /> ONLINE
-            </span>
-          )}
-          {backendStatus === 'offline' && (
-            <span className="flex items-center gap-1" style={{ color: '#FF5252' }}>
-              <span className="status-dot error" /> OFFLINE
-            </span>
-          )}
-          {backendStatus === 'checking' && (
-            <span className="flex items-center gap-1" style={{ color: '#FFB800' }}>
-              <span className="status-dot warning" /> A VERIFICAR...
-            </span>
           )}
         </div>
       </div>

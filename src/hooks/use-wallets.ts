@@ -1,8 +1,8 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, NexFlowXAPIError } from '@/lib/api/client';
-import type { Wallet, PayoutMethod, Store, Gateway, PaymentLink } from '@/lib/api/contracts';
+import { api } from '@/lib/api/client';
+import type { PayoutMethod } from '@/lib/api/contracts';
 import { mapWallet, mapActionTicket, mapStore, mapGateway, mapPaymentLink } from '@/lib/api/contracts';
 
 type RawRecord = Record<string, unknown>;
@@ -12,7 +12,8 @@ export function useWallets() {
     queryKey: ['wallets'],
     queryFn: async () => {
       const res = await api.wallets.list();
-      const raw: RawRecord[] = Array.isArray(res.data) ? (res.data as unknown as RawRecord[]) : [];
+      // API client unwraps { data: ... }, so res is Wallet[] directly
+      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
       return raw.map(mapWallet);
     },
   });
@@ -53,7 +54,8 @@ export function useStores() {
     queryKey: ['stores'],
     queryFn: async () => {
       const res = await api.stores.list();
-      const raw: RawRecord[] = Array.isArray(res.data) ? (res.data as unknown as RawRecord[]) : [];
+      // API client unwraps { data: ... }, so res is Store[] directly
+      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
       return raw.map(mapStore);
     },
   });
@@ -72,7 +74,8 @@ export function useGateways() {
     queryKey: ['gateways'],
     queryFn: async () => {
       const res = await api.gateways.list();
-      const raw: RawRecord[] = Array.isArray(res.data) ? (res.data as unknown as RawRecord[]) : [];
+      // API client unwraps { data: ... }, so res is Gateway[] directly
+      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
       return raw.map(mapGateway);
     },
   });
@@ -91,7 +94,8 @@ export function usePaymentLinks() {
     queryKey: ['payment-links'],
     queryFn: async () => {
       const res = await api.paymentLinks.list();
-      const raw: RawRecord[] = Array.isArray(res.data) ? (res.data as unknown as RawRecord[]) : [];
+      // API client unwraps { data: ... }, so res is PaymentLink[] directly
+      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
       return raw.map(mapPaymentLink);
     },
   });
@@ -119,7 +123,8 @@ export function useActionTickets() {
     queryKey: ['action-tickets'],
     queryFn: async () => {
       const res = await api.actionTickets.list();
-      const raw: RawRecord[] = Array.isArray(res.data) ? (res.data as unknown as RawRecord[]) : [];
+      // API client unwraps { data: ... }, so res is ActionTicket[] directly
+      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
       return raw.map(mapActionTicket);
     },
   });

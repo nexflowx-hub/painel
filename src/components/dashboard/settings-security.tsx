@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { api, users } from '@/lib/api/client';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/auth-store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -64,7 +65,6 @@ export default function SettingsSecurity() {
 
 /* ─── Password Tab ─── */
 function PasswordTab() {
-  const [current, setCurrent] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -85,9 +85,13 @@ function PasswordTab() {
     }
     setLoading(true);
     try {
-      const res = await api.settings.changePassword({ current_password: current, new_password: newPass });
+      // Use Supabase to update password (JWKS authentication)
+      const { error: supabaseError } = await supabase.auth.updateUser({ password: newPass });
+      if (supabaseError) {
+        setError(supabaseError.message);
+        return;
+      }
       setSuccess('Palavra-passe alterada com sucesso!');
-      setCurrent('');
       setNewPass('');
       setConfirm('');
     } catch (err: unknown) {
@@ -105,12 +109,6 @@ function PasswordTab() {
         Alterar Palavra-passe
       </h4>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>
-            Palavra-passe Atual
-          </Label>
-          <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} className="neon-input w-full rounded-lg px-4 py-3 text-sm" required />
-        </div>
         <div className="space-y-2">
           <Label className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>
             Nova Palavra-passe
@@ -229,15 +227,16 @@ function NotificationsTab() {
     let cancelled = false;
     setFetching(true);
     users.getMe()
-      .then((res) => {
+      .then((profile) => {
         if (cancelled) return;
-        const u = res?.data as Record<string, unknown> | undefined;
-        if (u) {
+        // API client unwraps { data: ... }, so profile is the inner UserMeResponse object directly
+        const settings = profile?.settings;
+        if (settings) {
           setNotifs({
-            email_notifications: !!u.email_notifications,
-            transaction_alerts: !!u.transaction_alerts,
-            weekly_reports: !!u.weekly_reports,
-            security_alerts: !!u.security_alerts,
+            email_notifications: !!settings.email_notifications,
+            transaction_alerts: !!settings.transaction_alerts,
+            weekly_reports: !!settings.weekly_reports,
+            security_alerts: !!settings.security_alerts,
           });
         }
       })

@@ -43,8 +43,8 @@ export default function DepositWidget() {
         amount: parsedAmount,
         currency,
       });
-      if (res?.data?.shareable_url) {
-        setPaymentLink(res.data.shareable_url);
+      if (res?.shareable_url) {
+        setPaymentLink(res.shareable_url);
       }
       setAmount('');
     } catch {

@@ -374,6 +374,38 @@ export default function LoginPage() {
             </div>
           )}
         </div>
+
+        {/* Contact Information */}
+        <div className="mt-6 text-center animate-fade-up-3">
+          <p className="nex-mono text-[10px] mb-2" style={{ color: '#606060' }}>Precisa de ajuda?</p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="mailto:support@atlasglobal.digital"
+              className="nex-mono text-[11px] transition-colors hover:text-[#00D4AA]"
+              style={{ color: '#A0A0A0' }}
+            >
+              support@atlasglobal.digital
+            </a>
+            <span style={{ color: '#606060' }}>·</span>
+            <a
+              href="https://t.me/AtlasCore_Support"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="nex-mono text-[11px] transition-colors hover:text-[#00D4AA]"
+              style={{ color: '#A0A0A0' }}
+            >
+              @AtlasCore_Support
+            </a>
+            <span style={{ color: '#606060' }}>·</span>
+            <a
+              href="tel:+447451221030"
+              className="nex-mono text-[11px] transition-colors hover:text-[#00D4AA]"
+              style={{ color: '#A0A0A0' }}
+            >
+              +44 74 5122 1030
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -5,6 +5,8 @@ import { useDashboardStore, type DashboardSection } from '@/lib/dashboard-store'
 import { useAuthStore, getUserRole, IS_DEV_MODE } from '@/lib/auth-store';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Search, Bell, Crown, Shield, User, CircleDot, Terminal, Menu } from 'lucide-react';
+import { ThemeToggle } from './theme-toggle';
+import { LanguageSelector } from './language-selector';
 import type { UserRole } from '@/lib/api/contracts';
 
 const sectionLabels: Record<DashboardSection, string> = {
@@ -140,6 +142,12 @@ export default function Header() {
             DEV
           </div>
         )}
+
+        {/* Language selector */}
+        <LanguageSelector />
+
+        {/* Theme toggle */}
+        <ThemeToggle />
 
         {/* Notification bell */}
         <button className="relative p-2 rounded-lg transition-colors" style={{ color: '#A0A0A0' }} aria-label="Notificações">

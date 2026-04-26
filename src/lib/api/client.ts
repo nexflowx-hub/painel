@@ -2,13 +2,12 @@
  * Atlas Global Payments — API Client V2.0 (NeXFlowX Engine)
  * BaaS (Banking as a Service) — Settlement Engine
  *
- * Key changes from V1:
  * - Auth handled by Supabase (no /auth/* endpoints)
  * - All responses unwrapped from { data: ... } automatically
- * - Admin endpoints added
  * - Token sourced from Supabase session
  */
 
+import { supabase } from '../supabase';
 import type {
   WalletsResponse,
   SwapRequest, SwapResponse, PayoutRequest, PayoutResponse,
@@ -37,36 +36,32 @@ export class NexFlowXAPIError extends Error {
   }
 }
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  // Get token from Supabase session instead of localStorage
-  const { supabase } = await import('@/lib/supabase');
+export async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token || null;
+  const token = session?.access_token;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((options.headers as Record<string, string>) ?? {}),
   };
+
   const res = await fetch(`${API_BASE}${endpoint}`, { ...options, mode: 'cors', headers });
+
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as APIError | null;
     throw new NexFlowXAPIError(
-      body?.error?.message ?? body?.message ?? `HTTP ${res.status}`, res.status,
-      body?.error?.code ?? 'UNKNOWN_ERROR'
+      body?.error?.message ?? body?.message ?? `HTTP ${res.status}`,
+      res.status,
+      body?.error?.code ?? 'UNKNOWN_ERROR',
     );
   }
 
-  // Unwrap the { data: ... } wrapper that the new backend applies to all responses
   const json = await res.json();
-  // If the response has a `data` key, unwrap it; otherwise return as-is
-  if (json && typeof json === 'object' && 'data' in json) {
-    return (json as { data: T }).data as T;
-  }
-  return json as T;
+  return (json && typeof json === 'object' && 'data' in json ? json.data : json) as T;
 }
 
-/* ─── Wallets (3-Stage Settlement) ─── */
+/* ─── Wallets ─── */
 export const wallets = {
   async list(): Promise<WalletsResponse> { return request('/wallets'); },
 };
@@ -88,10 +83,7 @@ export const payout = {
 /* ─── Deposits ─── */
 export const deposits = {
   async create(data: DepositRequest): Promise<DepositResponse> {
-    return request('/deposits', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    return request('/deposits', { method: 'POST', body: JSON.stringify(data) });
   },
 };
 
@@ -103,7 +95,7 @@ export const paymentLinks = {
   },
 };
 
-/* ─── Stores (Multi-Tenant) ─── */
+/* ─── Stores ─── */
 export const stores = {
   async list(): Promise<StoresResponse> { return request('/stores'); },
   async create(data: { name: string }): Promise<{ id: string; store_id: string }> {
@@ -123,7 +115,7 @@ export const gateways = {
 export const ledger = {
   async list(query: Record<string, string> = {}): Promise<LedgerResponse> {
     const params = new URLSearchParams(
-      Object.entries(query).filter(([, v]) => v != null) as [string, string][]
+      Object.entries(query).filter(([, v]) => v != null) as [string, string][],
     );
     return request(`/ledger${params.toString() ? `?${params}` : ''}`);
   },

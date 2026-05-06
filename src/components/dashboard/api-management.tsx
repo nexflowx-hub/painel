@@ -2,23 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore, isAdmin, isCustomer } from '@/lib/auth-store';
+import { merchantApi, type MerchantApiKey, type MerchantApiKeyCreated } from '@/lib/api/atlas-client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog';
-import {
   Code2, Key, Webhook, BookOpen, Lock, Plus, Eye, EyeOff, Copy,
-  CheckCircle, Loader2, ExternalLink, Shield, ArrowRight,
+  CheckCircle, Loader2, ExternalLink, Shield, ArrowRight, RefreshCw,
 } from 'lucide-react';
-
-interface ApiKey {
-  id: string; key_hash: string; label?: string;
-  created_at: string; last_used_at?: string; is_active: boolean;
-}
-
-interface CreateApiKeyResponse {
-  key: string; key_hash: string; label?: string; created_at: string;
-}
 
 export default function ApiManagement() {
   const { user } = useAuthStore();
@@ -124,22 +113,22 @@ function LockedState() {
 
 /* ─── API Keys Tab ─── */
 function ApiKeysTab() {
-  const [keys, setKeys] = useState<ApiKey[]>([]);
+  const [keys, setKeys] = useState<MerchantApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [newKey, setNewKey] = useState<string | null>(null);
-  const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
+  const [newKeyData, setNewKeyData] = useState<MerchantApiKeyCreated | null>(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadKeys = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/api-keys');
-      if (!res.ok) throw new Error('Failed to fetch');
-      const json = await res.json();
-      setKeys(Array.isArray(json) ? json : json?.data ?? []);
+      const data = await merchantApi.listApiKeys();
+      setKeys(Array.isArray(data) ? data : []);
     } catch {
       setKeys([]);
+      setError('Erro ao carregar chaves API.');
     } finally {
       setLoading(false);
     }
@@ -149,21 +138,15 @@ function ApiKeysTab() {
 
   const handleCreate = async () => {
     setCreating(true);
+    setError(null);
     try {
-      const res = await fetch('/api/api-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: 'Atlas GP API Key' }),
-      });
-      if (!res.ok) throw new Error('Failed to create');
-      const json = await res.json();
-      const data: CreateApiKeyResponse = json?.data ?? json;
+      const data = await merchantApi.generateApiKey('Atlas Core API Key');
       if (data?.key) {
-        setNewKey(data.key);
+        setNewKeyData(data);
         loadKeys();
       }
     } catch {
-      // silent
+      setError('Erro ao gerar chave API. Tente novamente.');
     } finally {
       setCreating(false);
     }
@@ -193,20 +176,28 @@ function ApiKeysTab() {
         </button>
       </div>
 
-      {newKey && (
+      {error && (
+        <div className="p-3 rounded-lg mb-4" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+          <p className="nex-mono text-[10px]" style={{ color: '#EF4444' }}>{error}</p>
+        </div>
+      )}
+
+      {/* New key reveal (shown once) */}
+      {newKeyData && (
         <div className="p-4 rounded-lg mb-4" style={{ background: 'rgba(0,212,170,0.04)', border: '1px solid rgba(0,212,170,0.15)' }}>
           <p className="nex-mono text-[10px] uppercase tracking-wider mb-2" style={{ color: '#00D4AA' }}>
-            ⚠️ Nova Chave API (guarde em segurança)
+            ⚠️ Nova Chave API (guarde em segurança — não será mostrada novamente)
           </p>
           <div className="flex items-center gap-2">
-            <code className="nex-mono text-xs flex-1 break-all" style={{ color: '#FFFFFF' }}>{newKey}</code>
-            <button onClick={() => handleCopy(newKey)} className="p-2 rounded" style={{ color: '#00D4AA' }}>
-              <Copy className="w-4 h-4" />
+            <code className="nex-mono text-xs flex-1 break-all" style={{ color: '#FFFFFF' }}>{newKeyData.key}</code>
+            <button onClick={() => handleCopy(newKeyData.key)} className="p-2 rounded hover:bg-white/5 transition-colors" style={{ color: '#00D4AA' }}>
+              {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
         </div>
       )}
 
+      {/* Keys list */}
       {loading ? (
         <div className="p-4 text-center">
           <div className="inline-block w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#00D4AA', borderTopColor: 'transparent' }} />
@@ -215,9 +206,9 @@ function ApiKeysTab() {
         <p className="nex-mono text-xs text-center py-4" style={{ color: '#606060' }}>Nenhuma chave API criada.</p>
       ) : (
         <div className="space-y-2">
-          {keys.map((key) => (
+          {keys.map((apiKey) => (
             <div
-              key={key.id}
+              key={apiKey.id}
               className="flex items-center justify-between p-3 rounded-lg"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
             >
@@ -225,27 +216,21 @@ function ApiKeysTab() {
                 <Key className="w-4 h-4" style={{ color: '#00D4AA' }} />
                 <div>
                   <p className="nex-mono text-xs" style={{ color: '#FFFFFF' }}>
-                    {revealedKeys.has(key.id) ? key.key_hash : '••••••••••••••••'}
+                    {apiKey.key_prefix}
                   </p>
                   <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-                    Criada: {new Date(key.created_at).toLocaleDateString('pt-PT')}
-                    {key.label && ` · ${key.label}`}
+                    Criada: {new Date(apiKey.created_at).toLocaleDateString('pt-PT')}
+                    {apiKey.label && ` · ${apiKey.label}`}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    const next = new Set(revealedKeys);
-                    if (next.has(key.id)) next.delete(key.id);
-                    else next.add(key.id);
-                    setRevealedKeys(next);
-                  }}
-                  className="p-1.5 rounded" style={{ color: '#A0A0A0' }}
-                >
-                  {revealedKeys.has(key.id) ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
-                <span className={`status-dot ${key.is_active ? 'active' : 'inactive'}`} />
+              <div className="flex items-center gap-3">
+                {apiKey.last_used_at && (
+                  <span className="nex-mono text-[10px] hidden sm:inline" style={{ color: '#606060' }}>
+                    Último uso: {new Date(apiKey.last_used_at).toLocaleDateString('pt-PT')}
+                  </span>
+                )}
+                <span className={`status-dot ${apiKey.is_active ? 'active' : 'inactive'}`} />
               </div>
             </div>
           ))}
@@ -345,22 +330,20 @@ function ApiReferenceTab() {
 
   const endpoints = [
     { method: 'GET', path: '/wallets', desc: 'Listar carteiras', color: '#00B4D8' },
-    { method: 'POST', path: '/swap', desc: 'Executar câmbio', color: '#FFB800' },
-    { method: 'POST', path: '/payout', desc: 'Solicitar levantamento', color: '#FFB800' },
+    { method: 'POST', path: '/swaps', desc: 'Executar câmbio', color: '#FFB800' },
+    { method: 'POST', path: '/payouts', desc: 'Solicitar levantamento', color: '#FFB800' },
     { method: 'POST', path: '/deposits', desc: 'Criar depósito', color: '#00D4AA' },
-    { method: 'POST', path: '/payment-links', desc: 'Gerar link de pagamento', color: '#00D4AA' },
-    { method: 'GET', path: '/stores', desc: 'Listar lojas', color: '#00B4D8' },
-    { method: 'GET', path: '/settings/gateways', desc: 'Listar gateways', color: '#00B4D8' },
+    { method: 'GET', path: '/api/internal/links', desc: 'Listar smart links', color: '#00B4D8' },
+    { method: 'POST', path: '/api/internal/links', desc: 'Criar smart link', color: '#00D4AA' },
+    { method: 'GET', path: '/api/internal/stores', desc: 'Config da loja', color: '#00B4D8' },
+    { method: 'GET', path: '/api/merchant/api-keys', desc: 'Listar chaves API', color: '#00B4D8' },
+    { method: 'POST', path: '/api/merchant/api-keys/generate', desc: 'Gerar chave API', color: '#00D4AA' },
+    { method: 'GET', path: '/api/public/rates', desc: 'Taxas de câmbio', color: '#00B4D8' },
     { method: 'GET', path: '/ledger', desc: 'Consultar ledger', color: '#00B4D8' },
-    { method: 'GET', path: '/action-tickets', desc: 'Listar tickets de aprovação', color: '#00B4D8' },
-    { method: 'POST', path: '/action-tickets/:id/approve', desc: 'Aprovar ticket', color: '#00D4AA' },
-    { method: 'GET', path: '/api-keys', desc: 'Listar chaves API', color: '#00B4D8' },
-    { method: 'POST', path: '/api-keys', desc: 'Criar chave API', color: '#00D4AA' },
-    { method: 'GET', path: '/users/me', desc: 'Obter perfil do utilizador', color: '#A855F7' },
-    { method: 'PATCH', path: '/users/me', desc: 'Atualizar perfil', color: '#A855F7' },
+    { method: 'GET', path: '/auth/me', desc: 'Obter perfil do utilizador', color: '#A855F7' },
     ...(admin ? [
       { method: 'GET', path: '/admin/users', desc: 'Listar utilizadores (Admin)', color: '#FFB800' },
-      { method: 'GET', path: '/admin/payouts/pending', desc: 'Levantamentos pendentes (Admin)', color: '#FFB800' },
+      { method: 'GET', path: '/admin/tickets', desc: 'Listar tickets de aprovação (Admin)', color: '#FFB800' },
     ] : []),
   ];
 

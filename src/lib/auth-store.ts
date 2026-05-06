@@ -14,6 +14,19 @@ import { persist } from 'zustand/middleware';
 import { authApi, clearTokens } from './api/atlas-client';
 import type { AtlasRole, TierLevel, AccountStatus, AuthenticatedUser } from '@/types/atlas';
 
+/**
+ * Maps backend role strings to frontend AtlasRole.
+ * Backend sends 'operator' (Admin/Team) or 'user' (Merchant/Lojista).
+ * Frontend uses 'admin', 'merchant', 'customer'.
+ */
+export function mapBackendRole(backendRole?: string | null): AtlasRole {
+  if (!backendRole) return 'customer';
+  const r = backendRole.toLowerCase();
+  if (r === 'admin' || r === 'operator' || r === 'orgoperator') return 'admin';
+  if (r === 'merchant' || r === 'user' || r === 'seller') return 'merchant';
+  return 'customer';
+}
+
 /* ═══════════════════════════════════════════════════════════
    DEV MOCK MODE
    ═══════════════════════════════════════════════════════════ */
@@ -26,15 +39,15 @@ if (IS_DEV_MOCK) {
   );
 }
 
-function createMockUser(identifier: string): AuthenticatedUser {
+function createMockUser(identifier: string, role: AtlasRole = 'admin'): AuthenticatedUser {
   return {
     id: 'dev-user-001',
     email: identifier.includes('@') ? identifier : `${identifier}@atlascore.dev`,
-    fullName: 'NeXFlowX Operator',
-    role: 'admin' as AtlasRole,
-    tier: 'TIER_3_CORPORATE' as TierLevel,
+    fullName: role === 'merchant' ? 'Lojista Demo' : 'NeXFlowX Operator',
+    role,
+    tier: role === 'merchant' ? 'TIER_1_BASIC' as TierLevel : 'TIER_3_CORPORATE' as TierLevel,
     status: 'ACTIVE' as AccountStatus,
-    organizationName: 'NEXOR',
+    organizationName: role === 'merchant' ? 'Demo Store' : 'NEXOR',
     organizationId: 'dev-org-001',
   };
 }
@@ -97,10 +110,15 @@ export const useAuthStore = create<AuthStore>()(
 
         try {
           const response = await authApi.login({ identifier, password });
+          // Normalize backend role (e.g. 'operator' → 'admin', 'user' → 'merchant')
+          const normalizedUser: AuthenticatedUser = {
+            ...response.user,
+            role: mapBackendRole(response.user.role),
+          };
           set({
             isAuthenticated: true,
             isDevMode: false,
-            user: response.user,
+            user: normalizedUser,
             loginError: null,
             isLoading: false,
           });
@@ -138,10 +156,14 @@ export const useAuthStore = create<AuthStore>()(
 
         try {
           const response = await authApi.register({ email, password, nickname });
+          const normalizedUser: AuthenticatedUser = {
+            ...response.user,
+            role: mapBackendRole(response.user.role),
+          };
           set({
             isAuthenticated: true,
             isDevMode: false,
-            user: response.user,
+            user: normalizedUser,
             registerError: null,
             isLoading: false,
           });
@@ -185,7 +207,11 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true });
         try {
           const user = await authApi.me();
-          set({ isAuthenticated: true, isDevMode: false, user, isLoading: false });
+          const normalizedUser: AuthenticatedUser = {
+            ...user,
+            role: mapBackendRole(user.role),
+          };
+          set({ isAuthenticated: true, isDevMode: false, user: normalizedUser, isLoading: false });
         } catch {
           clearTokens();
           set({ isAuthenticated: false, user: null, isLoading: false, isDevMode: false });
@@ -226,6 +252,11 @@ export function isCustomer(user: AuthenticatedUser | null): boolean {
   return user?.role === 'customer';
 }
 
+/**
+ * Returns the effective role, mapping raw backend values if needed.
+ * Safe to call with any role string from the API.
+ */
 export function getUserRole(user: AuthenticatedUser | null): AtlasRole {
-  return user?.role ?? 'customer';
+  if (!user) return 'customer';
+  return mapBackendRole(user.role);
 }

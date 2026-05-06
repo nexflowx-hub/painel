@@ -40,6 +40,27 @@ import type {
 } from '@/types/atlas';
 
 /* ═══════════════════════════════════════════════════════════
+   MERCHANT API KEY TYPES
+   ═══════════════════════════════════════════════════════════ */
+
+export interface MerchantApiKey {
+  id: string;
+  key_prefix: string;      // 'sk_live_atlas_...f3xK'
+  label?: string;
+  is_active: boolean;
+  created_at: string;
+  last_used_at?: string;
+}
+
+export interface MerchantApiKeyCreated {
+  id: string;
+  key: string;             // Full key (only shown once): 'sk_live_atlas_...full'
+  key_prefix: string;
+  label?: string;
+  created_at: string;
+}
+
+/* ═══════════════════════════════════════════════════════════
    CONFIGURAÇÃO
    ═══════════════════════════════════════════════════════════ */
 
@@ -388,6 +409,37 @@ export const merchantApi = {
   async listCustomers(): Promise<CheckoutCustomer[]> {
     return atlasRequest('/api/internal/customers');
   },
+
+  /** GET /api/merchant/api-keys — Listar chaves API do Merchant */
+  async listApiKeys(): Promise<MerchantApiKey[]> {
+    return atlasRequest('/api/merchant/api-keys');
+  },
+
+  /** POST /api/merchant/api-keys/generate — Gerar nova chave API */
+  async generateApiKey(label?: string): Promise<MerchantApiKeyCreated> {
+    return atlasRequest('/api/merchant/api-keys/generate', {
+      method: 'POST',
+      body: label ? { label } : {},
+    });
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════
+   PUBLIC ENDPOINTS (no auth required)
+   ═══════════════════════════════════════════════════════════ */
+
+export interface ExchangeRate {
+  base: string;
+  currency: string;
+  rate: number;
+  timestamp: string;
+}
+
+export const publicApi = {
+  /** GET /api/public/rates — Exchange rates (base: USDT) */
+  async rates(): Promise<ExchangeRate[]> {
+    return atlasRequest('/api/public/rates', { auth: false });
+  },
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -404,6 +456,7 @@ export const atlas = {
   kyc: kycApi,
   admin: adminApi,
   merchant: merchantApi,
+  public: publicApi,
 };
 
 export default atlas;
@@ -602,6 +655,40 @@ function atlasMockResponse<T>(endpoint: string, method?: string): T {
       { id: 'cust-004', name: 'Ana Ferreira', email: 'ana.f@startup.io', document: '518736294', document_type: 'NIF', total_spent: 5600.00, total_spent_currency: 'EUR', transactions_count: 22, last_purchase_at: new Date(now - 3600000 * 5).toISOString(), created_at: new Date(now - 86400000 * 60).toISOString() },
       { id: 'cust-005', name: 'Carlos Mendes', email: 'carlos.mendes@corp.com', phone: '+351934567890', document: '987654321', document_type: 'CNPJ', total_spent: 15800.00, total_spent_currency: 'EUR', transactions_count: 45, last_purchase_at: new Date(now - 86400000 * 1).toISOString(), created_at: new Date(now - 86400000 * 200).toISOString() },
       { id: 'cust-006', name: 'Sofia Costa', email: 'sofia.costa@outlook.com', document: null, total_spent: 150.00, total_spent_currency: 'USD', transactions_count: 1, last_purchase_at: new Date(now - 86400000 * 20).toISOString(), created_at: new Date(now - 86400000 * 20).toISOString() },
+    ] as T;
+  }
+
+  // ── MERCHANT: API Keys ──
+  if (endpoint === '/api/merchant/api-keys' && method === 'GET') {
+    return [
+      { id: 'ak-001', key_prefix: 'sk_live_atlas_7xKm9p...f3xK', label: 'Production Key', is_active: true, created_at: '2025-01-10T08:00:00Z', last_used_at: '2025-06-15T14:30:00Z' },
+      { id: 'ak-002', key_prefix: 'sk_live_atlas_2nQw8r...a7bC', label: 'Integration Test', is_active: true, created_at: '2025-03-22T12:00:00Z', last_used_at: '2025-06-14T09:15:00Z' },
+      { id: 'ak-003', key_prefix: 'sk_live_atlas_5jPz3v...d9eF', label: 'Deprecated — old platform', is_active: false, created_at: '2024-11-05T16:00:00Z', last_used_at: '2025-02-28T22:00:00Z' },
+    ] as T;
+  }
+
+  if (endpoint === '/api/merchant/api-keys/generate' && method === 'POST') {
+    const keyId = 'ak-' + Math.random().toString(36).slice(2, 8);
+    const fullKey = `sk_live_atlas_${Math.random().toString(36).slice(2, 14)}${Math.random().toString(36).slice(2, 14)}${Math.random().toString(36).slice(2, 6)}`;
+    return {
+      id: keyId,
+      key: fullKey,
+      key_prefix: fullKey.slice(0, 20) + '...' + fullKey.slice(-4),
+      label: 'Atlas Core API Key',
+      created_at: new Date().toISOString(),
+    } as T;
+  }
+
+  // ── PUBLIC: Exchange Rates ──
+  if (endpoint === '/api/public/rates') {
+    const now = new Date().toISOString();
+    return [
+      { base: 'USDT', currency: 'EUR', rate: 0.9215, timestamp: now },
+      { base: 'USDT', currency: 'BRL', rate: 5.4320, timestamp: now },
+      { base: 'USDT', currency: 'USD', rate: 1.0000, timestamp: now },
+      { base: 'USDT', currency: 'BTC', rate: 0.00000973, timestamp: now },
+      { base: 'USDT', currency: 'ETH', rate: 0.000265, timestamp: now },
+      { base: 'USDT', currency: 'GBP', rate: 0.7890, timestamp: now },
     ] as T;
   }
 

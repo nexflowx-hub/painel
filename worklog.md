@@ -93,3 +93,32 @@ Stage Summary:
 - TypeScript compila sem erros (0 erros em src/)
 - GET / 200 verificado
 - Pushed to GitHub: commit ac94f1a
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Remove ALL mock data — production-only API client V4.0 + 3 bugs críticos
+
+Work Log:
+- atlas-client.ts reescrito (V4.0): API_BASE usa NEXT_PUBLIC_API_URL
+- Removida constante DEV_MOCK e verificação em atlasRequest()
+- Removida função atlasMockResponse() (~230 linhas eliminadas)
+- Rotas corrigidas: /merchant/api-keys, /public/rates, /internal/stores (sem /api/ duplicado)
+- Novo tipo MerchantApiKeyResponse { apiKey, storeName } para response real
+- Removido NEXT_PUBLIC_ATLAS_API_URL (obsoleto)
+- auth-store.ts: Removida IS_DEV_MOCK, createMockUser(), isDevMode
+- auth-store.ts: Removidos todos blocos if(IS_DEV_MOCK) de login/register/logout/validateToken
+- Mantida mapBackendRole() para RBAC dinâmico (OrgOperator→admin, User→merchant)
+- dashboard-store.ts: Role lida de useAuthStore.getState() (sem hardcoded)
+- api-management.tsx: Adaptado para { apiKey, storeName } real (GET /merchant/api-keys)
+- api-management.tsx: POST /merchant/api-keys/generate com response { apiKey }
+- swap-widget.tsx: Consome GET /public/rates via publicApi.rates()
+- swap-widget.tsx: crossRate() calcula qualquer par via USDT base
+- 8 componentes limpos de IS_DEV_MOCK: dashboard-overview, login-page, dashboard-shell, footer, header, sidebar, settings-security, checkout-panel
+- Grep final: 0 ocorrências de IS_DEV_MOCK|DEV_MOCK|ENABLE_DEV_MOCK|isDevMode em src/
+
+Stage Summary:
+- 12 ficheiros modificados, 549 linhas removidas, 156 adicionadas
+- TypeScript compila sem erros
+- GET / 200 verificado
+- Pushed to GitHub: commit 5754b17

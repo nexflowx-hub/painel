@@ -58,3 +58,38 @@ Stage Summary:
 - 3 new legal pages created with proper content
 - Manifest warnings resolved
 - Pushed to GitHub: commit cf11396
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: 3 Bugs Críticos — RBAC, API Management, Motor de Taxas
+
+Work Log:
+- RBAC: Removida role 'admin' hardcoded em dashboard-store.ts (linha 31)
+- RBAC: Adicionada mapBackendRole() em auth-store.ts para mapear roles do backend ('operator'→admin, 'user'→merchant, 'seller'→merchant)
+- RBAC: Login, Register e validateToken normalizam roles via mapBackendRole() antes de armazenar
+- RBAC: dashboard-store.ts agora lê role dinamicamente via useAuthStore.getState()
+- RBAC: getUserRole() refatorada para usar mapBackendRole() internamente
+- RBAC: Sidebar já usava getUserRole(user) — funcionamento verificado
+- RBAC: Aprovações e Liquidez ocultadas automaticamente (RBAC_MATRIX: minRole='admin')
+
+- API Management: Adicionados tipos MerchantApiKey e MerchantApiKeyCreated ao atlas-client.ts
+- API Management: Adicionados merchantApi.listApiKeys() (GET /api/merchant/api-keys) e merchantApi.generateApiKey() (POST /api/merchant/api-keys/generate)
+- API Management: Adicionados mock responses com chaves sk_live_atlas_... realistas
+- API Management: api-management.tsx reescrito para usar merchantApi em vez de fetch('/api/api-keys') local
+- API Management: ApiKeysTab agora mostra key_prefix, label, status, last_used_at
+- API Management: Chave gerada mostrada uma única vez com aviso de segurança
+
+- Motor de Taxas: Adicionada publicApi.rates() (GET /api/public/rates) ao atlas-client.ts
+- Motor de Taxas: Adicionado tipo ExchangeRate { base, currency, rate, timestamp }
+- Motor de Taxas: Mock data com taxas base USDT: EUR (0.9215), BRL (5.4320), USD (1.0), BTC, ETH, GBP
+- Motor de Taxas: swap-widget.tsx reescrito — removeu resolveProvider() hardcoded
+- Motor de Taxas: Implementado crossRate() para calcular taxa entre qualquer par via USDT
+- Motor de Taxas: Taxas carregadas via useEffect + fetchRates() na montagem
+- Motor de Taxas: Indicador LIVE com timestamp, botão de refresh, estado de erro
+
+Stage Summary:
+- 5 ficheiros modificados: auth-store.ts, dashboard-store.ts, atlas-client.ts, api-management.tsx, swap-widget.tsx
+- TypeScript compila sem erros (0 erros em src/)
+- GET / 200 verificado
+- Pushed to GitHub: commit ac94f1a

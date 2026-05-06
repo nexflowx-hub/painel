@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Legal | Atlas Global Payments',
-  description: 'Documentos legais e políticas do Atlas Global Payments',
+  title: 'Legal | Atlas Core',
+  description: 'Documentos legais e políticas do Atlas Core Banking',
 }
 
 export default function LegalLayout({
@@ -28,7 +28,7 @@ export default function LegalLayout({
             <div className="w-6 h-6 rounded bg-primary/20 flex items-center justify-center">
               <span className="text-primary text-xs font-bold">A</span>
             </div>
-            <span className="nex-mono text-sm font-medium">Atlas Global</span>
+            <span className="nex-mono text-sm font-medium">Atlas Core</span>
           </div>
         </div>
       </header>
@@ -42,7 +42,7 @@ export default function LegalLayout({
       <footer className="border-t border-border bg-card px-6 py-6">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="nex-mono text-[10px] text-muted-foreground">
-            © 2026 Atlas Global Payments · IAHUB360 LTD · UK Reg. 16626733
+            © 2026 Atlas Core Banking · IAHUB360 LTD · UK Reg. 16626733
           </span>
           <div className="flex items-center gap-4">
             <Link href="/legal/terms" className="nex-mono text-[10px] text-muted-foreground hover:text-primary transition-colors">

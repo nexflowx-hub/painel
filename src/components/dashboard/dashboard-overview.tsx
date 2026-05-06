@@ -16,7 +16,14 @@ import type { Wallet as WalletType, Transaction, WalletSummary } from '@/types/a
 
 /* ─── Helpers ─── */
 function fmt(n: number, currency: string) {
-  return new Intl.NumberFormat('pt-PT', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
+  try {
+    return new Intl.NumberFormat('pt-PT', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
+  } catch {
+    // Fallback for non-standard currency codes (e.g. USDT, BTC, ETH)
+    const symbols: Record<string, string> = { USDT: '₮', BTC: '₿', ETH: 'Ξ', USDC: 'USDC' };
+    const sym = symbols[currency] || currency;
+    return `${sym} ${n.toFixed(2)}`;
+  }
 }
 
 function fmtCompact(n: number) {

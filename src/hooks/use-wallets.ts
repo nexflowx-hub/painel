@@ -206,8 +206,10 @@ export function useStores() {
   return useQuery({
     queryKey: ['stores'],
     queryFn: async () => {
-      // Stores will be fetched from the Atlas Core API when endpoint is ready
-      return [] as import('@/types/atlas').Store[];
+      const { merchantApi } = await import('@/lib/api/atlas-client');
+      const storeConfig = await merchantApi.getStoreConfig();
+      // Merchant has one store config — wrap in array for compatibility
+      return [storeConfig] as unknown as import('@/types/atlas').Store[];
     },
   });
 }
@@ -216,11 +218,12 @@ export function useCreateStore() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: { name: string }) => {
-      // Will connect to Atlas Core API when endpoint is ready
-      return { id: 'mock', name: data.name };
+      const { merchantApi } = await import('@/lib/api/atlas-client');
+      return merchantApi.updateStoreConfig({ name: data.name });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stores'] });
+      qc.invalidateQueries({ queryKey: ['checkout-store'] });
     },
   });
 }
@@ -229,8 +232,8 @@ export function usePaymentLinks() {
   return useQuery({
     queryKey: ['payment-links'],
     queryFn: async () => {
-      // Will connect to Atlas Core API when endpoint is ready
-      return [] as import('@/types/atlas').PaymentLink[];
+      const { merchantApi } = await import('@/lib/api/atlas-client');
+      return merchantApi.listPaymentLinks();
     },
   });
 }
@@ -238,11 +241,19 @@ export function usePaymentLinks() {
 export function useCreatePaymentLink() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { amount: number | string; currency: string; store_id?: string; customer_email?: string }) => {
-      return { id: 'mock', shareable_url: '' };
+    mutationFn: async (data: { amount: number | string; currency: string; store_id?: string; customer_email?: string; title?: string; description?: string; is_single_use?: boolean; success_url?: string }) => {
+      const { merchantApi } = await import('@/lib/api/atlas-client');
+      return merchantApi.createPaymentLink({
+        title: data.title || 'Payment Link',
+        amount: Number(data.amount),
+        currency: data.currency,
+        is_single_use: data.is_single_use ?? false,
+        success_url: data.success_url,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['payment-links'] });
+      qc.invalidateQueries({ queryKey: ['smart-payment-links'] });
     },
   });
 }
@@ -251,7 +262,7 @@ export function useGateways() {
   return useQuery({
     queryKey: ['gateways'],
     queryFn: async () => {
-      // Will connect to Atlas Core API when endpoint is ready
+      // No list gateways endpoint yet — returns empty until backend exposes it
       return [] as import('@/types/atlas').Gateway[];
     },
   });
@@ -260,8 +271,9 @@ export function useGateways() {
 export function useConfigureGateway() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { gateway_id: string; config: Record<string, unknown> }) => {
-      return { success: true };
+    mutationFn: async (_data: { gateway_id: string; config: Record<string, unknown> }) => {
+      // No configure gateway endpoint yet — throws until backend exposes it
+      throw new Error('Gateway configuration endpoint not yet available. Contact Atlas Core support.');
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['gateways'] });

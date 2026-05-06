@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import type {
   StoreCheckout, StoreCheckoutConfig, SmartPaymentLink, CheckoutCustomer,
 } from '@/types/atlas';
-import { useCheckoutStore, useSmartPaymentLinks, useCreatePaymentLink, useCustomers } from '@/hooks/use-merchant';
+import { useCheckoutStore, useUpdateCheckoutStore, useSmartPaymentLinks, useCreatePaymentLink, useCustomers } from '@/hooks/use-merchant';
 
 /* ═══════════════════════════════════════════════════════════
    HELPERS
@@ -60,159 +60,6 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
     </button>
   );
 }
-
-/* ═══════════════════════════════════════════════════════════
-   PLACEHOLDER DATA — used when hooks return empty
-   ═══════════════════════════════════════════════════════════ */
-
-const MOCK_STORE: StoreCheckout = {
-  id: 'dev-store-001',
-  name: 'NeXFlowX Tech Store',
-  slug: 'nexflowx',
-  logo_url: undefined,
-  primary_color: '#00D4AA',
-  require_document: true,
-  require_phone: false,
-  status: 'active',
-  created_at: '2025-01-15T00:00:00Z',
-};
-
-const MOCK_LINKS: SmartPaymentLink[] = [
-  {
-    id: 'lnk_a1b2c3d4',
-    title: 'Plano Premium Mensal',
-    description: 'Acesso completo à plataforma',
-    amount: 49.90,
-    currency: 'EUR',
-    sales_count: 127,
-    status: 'active',
-    is_single_use: false,
-    shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk_a1b2c3d4',
-    created_at: '2025-06-01T10:30:00Z',
-    expires_at: '2025-12-01T10:30:00Z',
-  },
-  {
-    id: 'lnk_e5f6g7h8',
-    title: 'Setup Consultoria UX',
-    description: 'Sessão de 2h com designer sénior',
-    amount: 350.00,
-    currency: 'EUR',
-    sales_count: 34,
-    status: 'active',
-    is_single_use: false,
-    shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk_e5f6g7h8',
-    created_at: '2025-05-20T14:00:00Z',
-    expires_at: '2025-11-20T14:00:00Z',
-  },
-  {
-    id: 'lnk_i9j0k1l2',
-    title: 'Licença Enterprise Anual',
-    description: 'Licença para até 50 utilizadores',
-    amount: 4999.00,
-    currency: 'USD',
-    sales_count: 8,
-    status: 'active',
-    is_single_use: true,
-    shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk_i9j0k1l2',
-    created_at: '2025-06-10T09:00:00Z',
-    expires_at: '2025-07-10T09:00:00Z',
-  },
-  {
-    id: 'lnk_m3n4o5p6',
-    title: 'Workshop Blockchain Introdutório',
-    description: 'Workshop de 4h — conceitos e hands-on',
-    amount: 189.90,
-    currency: 'BRL',
-    sales_count: 63,
-    status: 'expired',
-    is_single_use: false,
-    shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk_m3n4o5p6',
-    created_at: '2025-03-01T08:00:00Z',
-    expires_at: '2025-04-01T08:00:00Z',
-  },
-  {
-    id: 'lnk_q7r8s9t0',
-    title: 'Token USDT — Plano Starter',
-    description: 'Pagamento inicial em USDT',
-    amount: 99.00,
-    currency: 'USDT',
-    sales_count: 45,
-    status: 'paid',
-    is_single_use: false,
-    shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk_q7r8s9t0',
-    created_at: '2025-04-15T12:00:00Z',
-    expires_at: '2025-05-15T12:00:00Z',
-  },
-];
-
-const MOCK_CUSTOMERS: CheckoutCustomer[] = [
-  {
-    id: 'cust_001',
-    name: 'João Miguel Ferreira',
-    email: 'joao.ferreira@protonmail.com',
-    document: 'CPF: 123.456.789-00',
-    total_spent: 1249.80,
-    total_spent_currency: 'EUR',
-    last_purchase_at: '2025-06-12T14:30:00Z',
-    transactions_count: 5,
-    created_at: '2025-03-15T10:00:00Z',
-  },
-  {
-    id: 'cust_002',
-    name: 'Ana Carolina Santos',
-    email: 'ana.santos@outlook.com',
-    document: 'CPF: 987.654.321-00',
-    total_spent: 589.90,
-    total_spent_currency: 'EUR',
-    last_purchase_at: '2025-06-11T09:15:00Z',
-    transactions_count: 3,
-    created_at: '2025-04-20T10:00:00Z',
-  },
-  {
-    id: 'cust_003',
-    name: 'Pedro Rafael Oliveira',
-    email: 'pedro.oliveira@gmail.com',
-    document: 'NIF: 234567890',
-    total_spent: 4999.00,
-    total_spent_currency: 'USD',
-    last_purchase_at: '2025-06-10T16:45:00Z',
-    transactions_count: 1,
-    created_at: '2025-05-01T10:00:00Z',
-  },
-  {
-    id: 'cust_004',
-    name: 'Mariana Isabel Costa',
-    email: 'mariana.costa@icloud.com',
-    document: 'CNPJ: 12.345.678/0001-90',
-    total_spent: 3847.60,
-    total_spent_currency: 'BRL',
-    last_purchase_at: '2025-06-08T11:00:00Z',
-    transactions_count: 8,
-    created_at: '2025-02-10T10:00:00Z',
-  },
-  {
-    id: 'cust_005',
-    name: 'Luís André Martins',
-    email: 'luis.martins@yahoo.com',
-    document: 'CPF: 456.789.012-33',
-    total_spent: 299.00,
-    total_spent_currency: 'USDT',
-    last_purchase_at: '2025-06-05T20:30:00Z',
-    transactions_count: 2,
-    created_at: '2025-06-01T10:00:00Z',
-  },
-  {
-    id: 'cust_006',
-    name: 'Sofia Beatriz Almeida',
-    email: 'sofia.almeida@fastmail.com',
-    document: 'NIF: 345678901',
-    total_spent: 749.70,
-    total_spent_currency: 'EUR',
-    last_purchase_at: '2025-05-28T13:20:00Z',
-    transactions_count: 4,
-    created_at: '2025-01-20T10:00:00Z',
-  },
-];
 
 /* ═══════════════════════════════════════════════════════════
    SHARED UI COMPONENTS
@@ -290,9 +137,21 @@ const selectStyle: React.CSSProperties = {
 
 function StoreSettingsTab() {
   const { data: storeData, isLoading } = useCheckoutStore();
+  const updateStore = useUpdateCheckoutStore();
   const [isSaving, setIsSaving] = useState(false);
 
-  const store = storeData || MOCK_STORE;
+  // Default empty store config for uninitialized merchants
+  const emptyStore: StoreCheckout = {
+    id: '',
+    name: '',
+    slug: '',
+    primary_color: '#00D4AA',
+    require_document: true,
+    require_phone: false,
+    status: 'active',
+    created_at: new Date().toISOString(),
+  };
+  const store = storeData || emptyStore;
 
   const [name, setName] = useState(store.name);
   const [slug, setSlug] = useState(store.slug);
@@ -310,7 +169,7 @@ function StoreSettingsTab() {
         require_document: requireDocument,
         require_phone: requirePhone,
       };
-      await new Promise((r) => setTimeout(r, 800));
+      await updateStore.mutateAsync(config);
       toast.success('Configuração guardada com sucesso');
     } catch {
       toast.error('Erro ao guardar configuração');
@@ -548,7 +407,7 @@ function StoreSettingsTab() {
 function PaymentLinksTab() {
   const { data: linksData, isLoading } = useSmartPaymentLinks();
   const createLink = useCreatePaymentLink();
-  const links: SmartPaymentLink[] = (linksData as SmartPaymentLink[] | undefined) ?? MOCK_LINKS;
+  const links: SmartPaymentLink[] = (linksData as SmartPaymentLink[] | undefined) ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -574,10 +433,17 @@ function PaymentLinksTab() {
     if (!newTitle.trim() || !newAmount) return;
     setIsCreating(true);
     try {
-      await new Promise((r) => setTimeout(r, 1200));
-      const linkId = `lnk_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-      const url = `https://pay.atlasglobal.digital/nexflowx/${linkId}`;
-      setGeneratedLink(url);
+      const result = await createLink.mutateAsync({
+        title: newTitle,
+        amount: Number(newAmount),
+        currency: newCurrency,
+        is_single_use: singleUse,
+      });
+      if (result?.shareable_url) {
+        setGeneratedLink(result.shareable_url);
+      } else {
+        setGeneratedLink(`Link #${result?.id || 'criado'} gerado com sucesso`);
+      }
       toast.success('Link de pagamento criado com sucesso');
     } catch {
       toast.error('Erro ao criar link de pagamento');
@@ -1054,7 +920,7 @@ function PaymentLinksTab() {
 
 function CustomersTab() {
   const { data: customersData, isLoading } = useCustomers();
-  const customers: CheckoutCustomer[] = (customersData as CheckoutCustomer[] | undefined) ?? MOCK_CUSTOMERS;
+  const customers: CheckoutCustomer[] = (customersData as CheckoutCustomer[] | undefined) ?? [];
 
   return (
     <div className="space-y-6">

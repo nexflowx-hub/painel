@@ -7,7 +7,8 @@
 
 import { create } from 'zustand';
 import type { DashboardSection } from './rbac';
-import { getDefaultSection, hasAccess, getUserRole } from './rbac';
+export type { DashboardSection } from './rbac';
+import { getDefaultSection, hasAccess } from './rbac';
 import type { AtlasRole } from '@/types/atlas';
 
 interface DashboardStore {

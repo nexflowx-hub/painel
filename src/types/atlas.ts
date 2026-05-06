@@ -339,6 +339,45 @@ export interface PayoutResponse {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   MERCHANT — Stores, Payment Links, Gateways
+   ═══════════════════════════════════════════════════════════ */
+
+/** 🏪 Loja / Marca de um Merchant */
+export interface Store {
+  id: string;
+  name: string;
+  description?: string;
+  store_id: string;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at?: string;
+}
+
+/** 🔗 Link de Pagamento */
+export interface PaymentLink {
+  id: string;
+  amount: number;
+  currency: string;
+  status: 'active' | 'expired' | 'paid';
+  shareable_url?: string;
+  store_name?: string;
+  customer_email?: string;
+  store_id?: string;
+  created_at: string;
+  expires_at?: string;
+}
+
+/** 🔌 Gateway de Pagamento */
+export interface Gateway {
+  id: string;
+  name: string;
+  type: string;
+  is_active: boolean;
+  created_at: string;
+  config?: Record<string, unknown>;
+}
+
+/* ═══════════════════════════════════════════════════════════
    PAGINACAO & FILTRAGEM
    ═══════════════════════════════════════════════════════════ */
 

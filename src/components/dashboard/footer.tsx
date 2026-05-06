@@ -105,7 +105,7 @@ export default function Footer() {
         <div className="flex items-center gap-3">
           {user && (
             <span className="nex-mono text-[10px] hidden sm:block" style={{ color: 'var(--muted-foreground)' }}>
-              {user.username} · <span className="uppercase">{role}</span>
+              {user.fullName || user.email || 'User'} · <span className="uppercase">{role}</span>
             </span>
           )}
           {IS_DEV_MOCK && isDevMode && (

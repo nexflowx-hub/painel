@@ -9,7 +9,7 @@
  */
 
 import type {
-  AtlasAPIError,
+  AtlasAPIError as AtlasAPIErrorType,
   LoginRequest,
   LoginResponse,
   AuthenticatedUser,
@@ -30,6 +30,9 @@ import type {
   KYCTier1Request,
   KYCTier2Request,
   User,
+  Currency,
+  TierLevel,
+  TicketStatus,
 } from '@/types/atlas';
 
 /* ═══════════════════════════════════════════════════════════
@@ -130,7 +133,7 @@ export async function atlasRequest<T>(
       clearTokens();
       window.dispatchEvent(new CustomEvent('atlas:unauthorized'));
     }
-    const errorBody = await res.json().catch(() => null) as AtlasAPIError | null;
+    const errorBody = await res.json().catch(() => null) as AtlasAPIErrorType | null;
     throw new AtlasAPIError(
       errorBody?.error?.message ?? `HTTP ${res.status}`,
       res.status,
@@ -304,8 +307,6 @@ export const kycApi = {
   },
 };
 
-export type { Currency, TierLevel };
-
 /* ═══════════════════════════════════════════════════════════
    ADMIN / OPERATOR ENDPOINTS
    ═══════════════════════════════════════════════════════════ */
@@ -346,8 +347,6 @@ export const adminApi = {
     return atlasRequest('/admin/fee-schedules', { method: 'POST', body: data });
   },
 };
-
-export type { TicketStatus };
 
 /* ═══════════════════════════════════════════════════════════
    AGGREGATED EXPORT

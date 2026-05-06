@@ -5,9 +5,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWallets, useWalletTotals } from '@/hooks/use-wallets';
 import { useDashboardStore } from '@/lib/dashboard-store';
 import { payoutApi } from '@/lib/api/atlas-client';
-import type { Wallet, Currency, WalletSummary, PayoutRequest } from '@/types/atlas';
+import type { Wallet as WalletType, Currency, WalletSummary, PayoutRequest } from '@/types/atlas';
 import {
-  TrendingDown, Clock, Wallet,
+  TrendingDown, Clock, Wallet as WalletIcon,
   ArrowUpRight, ArrowLeftRight, Download,
   CircleDollarSign, AlertTriangle, ShieldBan,
 } from 'lucide-react';
@@ -156,7 +156,7 @@ function PayoutDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wallets: Wallet[];
+  wallets: WalletType[];
 }) {
   const qc = useQueryClient();
   const [method, setMethod] = useState<'CRYPTO' | 'IBAN' | 'PIX' | 'SEPA' | 'BANK'>('IBAN');
@@ -347,7 +347,7 @@ export default function WalletCards() {
     );
   }
 
-  const allWallets: Wallet[] = wallets ?? [];
+  const allWallets: WalletType[] = wallets ?? [];
 
   // Sort wallets to prioritize base currencies (EUR, USDT, USD, BRL)
   const sortedWallets = [...allWallets].sort((a, b) => {
@@ -421,7 +421,7 @@ export default function WalletCards() {
           amount={fmt(totals.available, primaryCurrency)}
           currency={primaryCurrency}
           color="#00B4D8"
-          icon={Wallet}
+          icon={WalletIcon}
           action={
             <button
               onClick={() => setPayoutOpen(true)}

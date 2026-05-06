@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useDashboardStore, type DashboardSection } from '@/lib/dashboard-store';
+import { useDashboardStore } from '@/lib/dashboard-store';
+import type { DashboardSection } from '@/lib/rbac';
 import { useAuthStore, getUserRole, IS_DEV_MOCK } from '@/lib/auth-store';
 import { ROLE_CONFIG, TIER_CONFIG } from '@/lib/rbac';
 import type { TierLevel } from '@/types/atlas';

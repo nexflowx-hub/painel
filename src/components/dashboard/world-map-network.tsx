@@ -156,20 +156,17 @@ export default function WorldMapNetwork() {
       >
         {/* ─── GEOGRAPHY ─── */}
         <Geographies geography={geoUrl}>
-          {({ geographies, error }) => {
-            // Handle error
-            if (error) {
-              if (!geoError) setGeoError(true)
-              return null
+          {({ geographies }) => {
+            if (geographies.length === 0 && !geoError) {
+              setGeoError(true)
             }
-            
             if (geographies.length > 0 && !mapReady) {
               setTimeout(() => setMapReady(true), 80)
             }
             
-            return geographies.map((geo) => (
+            return geographies.map((geo: any) => (
               <Geography
-                key={geo.rsmKey}
+                key={(geo as any).rsmKey || geo.id || JSON.stringify(geo.properties)}
                 geography={geo}
                 fill="#161B26"
                 stroke="#1E222C"

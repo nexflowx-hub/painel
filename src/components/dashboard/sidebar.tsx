@@ -11,6 +11,7 @@ import {
   Settings, ClipboardList, Droplets, Percent, Users,
   ChevronLeft, ChevronRight, ShieldCheck,
   ArrowLeftRight, Banknote, Download,
+  ShoppingCart,
 } from 'lucide-react';
 import { Logo3D } from '@/components/ui/logo-3d';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
@@ -20,7 +21,7 @@ import { Terminal } from 'lucide-react';
 const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard, Landmark, ReceiptText, Store, Link2, Plug, Code2,
   Settings, ClipboardList, Droplets, Percent, Users,
-  ShieldCheck, ArrowLeftRight, Banknote, Download,
+  ShieldCheck, ArrowLeftRight, Banknote, Download, ShoppingCart,
 };
 
 const categoryLabels: Record<string, string> = {

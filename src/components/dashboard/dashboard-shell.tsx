@@ -39,6 +39,7 @@ const ApiManagement = dynamic(() => import('./api-management'), { loading: () =>
 const StoresPanel = dynamic(() => import('./stores-panel'), { loading: () => <SectionLoading /> });
 const PaymentLinksPanel = dynamic(() => import('./payment-links-panel'), { loading: () => <SectionLoading /> });
 const GatewaysPanel = dynamic(() => import('./gateways-panel'), { loading: () => <SectionLoading /> });
+const CheckoutPanel = dynamic(() => import('./checkout-panel'), { loading: () => <SectionLoading /> });
 
 /* ─── Section loader with animation ─── */
 function SectionLoading() {
@@ -88,10 +89,8 @@ function SectionRenderer({ section }: { section: DashboardSection }) {
       return <WalletCards />;
     case 'activity':
       return <FinancialActivityTable />;
-    case 'stores':
-      return <StoresPanel />;
-    case 'payment-links':
-      return <PaymentLinksPanel />;
+    case 'checkout':
+      return <CheckoutPanel />;
     case 'gateways':
       return <GatewaysPanel />;
     case 'swap':

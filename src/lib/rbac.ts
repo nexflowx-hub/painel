@@ -20,8 +20,7 @@ export type DashboardSection =
   | 'deposits'
   | 'kyc'
   // Merchant
-  | 'stores'
-  | 'payment-links'
+  | 'checkout'
   | 'gateways'
   | 'developer'
   // Admin / Operator
@@ -54,8 +53,7 @@ export const RBAC_MATRIX: SectionPermission[] = [
   { id: 'kyc', label: 'Verificação KYC', labelKey: 'nav.kyc', minRole: 'customer', category: 'operation', icon: 'ShieldCheck' },
 
   // ═══ MERCHANT (Merchant+) ═══
-  { id: 'stores', label: 'Lojas & Marcas', labelKey: 'nav.stores', minRole: 'merchant', category: 'merchant', icon: 'Store' },
-  { id: 'payment-links', label: 'Links de Pagamento', labelKey: 'nav.paymentLinks', minRole: 'merchant', category: 'merchant', icon: 'Link2' },
+  { id: 'checkout', label: 'Checkout & Lojas', labelKey: 'nav.checkout', minRole: 'merchant', category: 'merchant', icon: 'ShoppingCart' },
   { id: 'gateways', label: 'Gateways & API', labelKey: 'nav.gateways', minRole: 'merchant', category: 'merchant', icon: 'Plug' },
   { id: 'developer', label: 'Developer / API', labelKey: 'nav.developer', minRole: 'merchant', category: 'merchant', icon: 'Code2' },
 

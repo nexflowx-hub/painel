@@ -33,6 +33,10 @@ import type {
   Currency,
   TierLevel,
   TicketStatus,
+  StoreCheckout,
+  StoreCheckoutConfig,
+  SmartPaymentLink,
+  CheckoutCustomer,
 } from '@/types/atlas';
 
 /* ═══════════════════════════════════════════════════════════
@@ -349,6 +353,44 @@ export const adminApi = {
 };
 
 /* ═══════════════════════════════════════════════════════════
+   MERCHANT — Checkout & Lojas, Smart Links, Mini-CRM
+   ═══════════════════════════════════════════════════════════ */
+
+export const merchantApi = {
+  /** GET /api/internal/stores — Obter config da loja */
+  async getStoreConfig(): Promise<StoreCheckout> {
+    return atlasRequest('/api/internal/stores');
+  },
+
+  /** PUT /api/internal/stores — Atualizar config da loja */
+  async updateStoreConfig(data: StoreCheckoutConfig): Promise<StoreCheckout> {
+    return atlasRequest('/api/internal/stores', { method: 'PUT', body: data });
+  },
+
+  /** GET /api/internal/links — Listar smart payment links */
+  async listPaymentLinks(): Promise<SmartPaymentLink[]> {
+    return atlasRequest('/api/internal/links');
+  },
+
+  /** POST /api/internal/links — Criar smart payment link */
+  async createPaymentLink(data: {
+    title: string;
+    description?: string;
+    amount: number;
+    currency: string;
+    is_single_use: boolean;
+    success_url?: string;
+  }): Promise<SmartPaymentLink> {
+    return atlasRequest('/api/internal/links', { method: 'POST', body: data });
+  },
+
+  /** GET /api/internal/customers — Listar clientes (Mini-CRM) */
+  async listCustomers(): Promise<CheckoutCustomer[]> {
+    return atlasRequest('/api/internal/customers');
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════
    AGGREGATED EXPORT
    ═══════════════════════════════════════════════════════════ */
 
@@ -361,6 +403,7 @@ export const atlas = {
   payouts: payoutApi,
   kyc: kycApi,
   admin: adminApi,
+  merchant: merchantApi,
 };
 
 export default atlas;
@@ -488,6 +531,75 @@ function atlasMockResponse<T>(endpoint: string, method?: string): T {
       pendingReview: false,
       nextSteps: ['Complete o KYC-2 para aumentar os seus limites de transação.'],
     } as T;
+  }
+
+  // ── MERCHANT: Store Config ──
+  if (endpoint === '/api/internal/stores' && method === 'GET') {
+    return {
+      id: 'dev-store-001',
+      name: 'NeXFlowX Tech Store',
+      slug: 'nexflowx',
+      logo_url: null,
+      primary_color: '#00D4AA',
+      require_document: true,
+      require_phone: false,
+      status: 'active',
+      created_at: '2025-01-15T10:00:00Z',
+    } as T;
+  }
+
+  if (endpoint === '/api/internal/stores' && method === 'PUT') {
+    return {
+      id: 'dev-store-001',
+      name: 'NeXFlowX Tech Store',
+      slug: 'nexflowx',
+      logo_url: null,
+      primary_color: '#00D4AA',
+      require_document: true,
+      require_phone: false,
+      status: 'active',
+      created_at: '2025-01-15T10:00:00Z',
+      updated_at: new Date().toISOString(),
+    } as T;
+  }
+
+  // ── MERCHANT: Smart Payment Links ──
+  if (endpoint === '/api/internal/links' && method === 'GET') {
+    const now = Date.now();
+    return [
+      { id: 'lnk-001', title: 'Plano Premium Mensal', description: 'Subscrição mensal ao plano premium', amount: 29.99, currency: 'EUR' as const, status: 'active' as const, is_single_use: false, sales_count: 47, shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk-001', success_url: '', store_id: 'dev-store-001', store_slug: 'nexflowx', created_at: new Date(now - 86400000 * 30).toISOString(), expires_at: null },
+      { id: 'lnk-002', title: 'Consultoria Individual', description: 'Sessão de consultoria 1:1', amount: 150.00, currency: 'EUR' as const, status: 'active' as const, is_single_use: true, sales_count: 3, shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk-002', success_url: '', store_id: 'dev-store-001', store_slug: 'nexflowx', created_at: new Date(now - 86400000 * 7).toISOString(), expires_at: new Date(now + 86400000 * 7).toISOString() },
+      { id: 'lnk-003', title: 'Curso Online FullStack', description: 'Acesso completo ao curso de desenvolvimento web', amount: 497.00, currency: 'BRL' as const, status: 'active' as const, is_single_use: false, sales_count: 128, shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk-003', success_url: '', store_id: 'dev-store-001', store_slug: 'nexflowx', created_at: new Date(now - 86400000 * 14).toISOString(), expires_at: null },
+      { id: 'lnk-004', title: 'Template Pro Design', description: 'Pack de templates premium para Figma', amount: 79.90, currency: 'USD' as const, status: 'expired' as const, is_single_use: false, sales_count: 22, shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk-004', success_url: '', store_id: 'dev-store-001', store_slug: 'nexflowx', created_at: new Date(now - 86400000 * 60).toISOString(), expires_at: new Date(now - 86400000 * 2).toISOString() },
+      { id: 'lnk-005', title: 'API Key Enterprise', description: 'Chave API para integração enterprise', amount: 0.01, currency: 'USDT' as const, status: 'active' as const, is_single_use: true, sales_count: 0, shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk-005', success_url: '', store_id: 'dev-store-001', store_slug: 'nexflowx', created_at: new Date(now - 3600000).toISOString(), expires_at: new Date(now + 86400000).toISOString() },
+    ] as T;
+  }
+
+  if (endpoint === '/api/internal/links' && method === 'POST') {
+    return {
+      id: 'lnk-' + Math.random().toString(36).slice(2, 8),
+      title: 'Novo Link',
+      amount: 0,
+      currency: 'EUR',
+      status: 'active',
+      is_single_use: false,
+      sales_count: 0,
+      shareable_url: 'https://pay.atlasglobal.digital/nexflowx/lnk-new',
+      created_at: new Date().toISOString(),
+    } as T;
+  }
+
+  // ── MERCHANT: Customers (Mini-CRM) ──
+  if (endpoint === '/api/internal/customers') {
+    const now = Date.now();
+    return [
+      { id: 'cust-001', name: 'João Silva', email: 'joao.silva@email.com', phone: '+351912345678', document: '234567890', document_type: 'NIF', total_spent: 1250.50, total_spent_currency: 'EUR', transactions_count: 8, last_purchase_at: new Date(now - 86400000).toISOString(), created_at: new Date(now - 86400000 * 90).toISOString() },
+      { id: 'cust-002', name: 'Maria Santos', email: 'maria.santos@empresa.pt', phone: '+351923456789', document: '516842391', document_type: 'NIF', total_spent: 3420.00, total_spent_currency: 'EUR', transactions_count: 15, last_purchase_at: new Date(now - 86400000 * 3).toISOString(), created_at: new Date(now - 86400000 * 120).toISOString() },
+      { id: 'cust-003', name: 'Pedro Oliveira', email: 'pedro.oliveira@gmail.com', phone: '+5511987654321', document: '123.456.789-00', document_type: 'CPF', total_spent: 890.00, total_spent_currency: 'BRL', transactions_count: 4, last_purchase_at: new Date(now - 86400000 * 10).toISOString(), created_at: new Date(now - 86400000 * 45).toISOString() },
+      { id: 'cust-004', name: 'Ana Ferreira', email: 'ana.f@startup.io', document: '518736294', document_type: 'NIF', total_spent: 5600.00, total_spent_currency: 'EUR', transactions_count: 22, last_purchase_at: new Date(now - 3600000 * 5).toISOString(), created_at: new Date(now - 86400000 * 60).toISOString() },
+      { id: 'cust-005', name: 'Carlos Mendes', email: 'carlos.mendes@corp.com', phone: '+351934567890', document: '987654321', document_type: 'CNPJ', total_spent: 15800.00, total_spent_currency: 'EUR', transactions_count: 45, last_purchase_at: new Date(now - 86400000 * 1).toISOString(), created_at: new Date(now - 86400000 * 200).toISOString() },
+      { id: 'cust-006', name: 'Sofia Costa', email: 'sofia.costa@outlook.com', document: null, total_spent: 150.00, total_spent_currency: 'USD', transactions_count: 1, last_purchase_at: new Date(now - 86400000 * 20).toISOString(), created_at: new Date(now - 86400000 * 20).toISOString() },
+    ] as T;
   }
 
   // Generic fallback

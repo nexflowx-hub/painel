@@ -339,7 +339,7 @@ export interface PayoutResponse {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   MERCHANT — Stores, Payment Links, Gateways
+   MERCHANT — Stores, Payment Links, Gateways, Customers
    ═══════════════════════════════════════════════════════════ */
 
 /** 🏪 Loja / Marca de um Merchant */
@@ -353,18 +353,76 @@ export interface Store {
   updated_at?: string;
 }
 
-/** 🔗 Link de Pagamento */
+/** 🏪 Loja com Checkout & Branding (E-commerce) */
+export interface StoreCheckout {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url?: string;
+  primary_color: string;
+  require_document: boolean;
+  require_phone: boolean;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at?: string;
+}
+
+/** Configuração do Checkout (enviada ao backend) */
+export interface StoreCheckoutConfig {
+  name?: string;
+  slug?: string;
+  logo_url?: string;
+  primary_color?: string;
+  require_document?: boolean;
+  require_phone?: boolean;
+  success_url?: string;
+}
+
+/** 🔗 Link de Pagamento Inteligente */
 export interface PaymentLink {
   id: string;
   amount: number;
   currency: string;
-  status: 'active' | 'expired' | 'paid';
+  status: 'active' | 'expired' | 'paid' | 'cancelled';
   shareable_url?: string;
   store_name?: string;
   customer_email?: string;
   store_id?: string;
   created_at: string;
   expires_at?: string;
+}
+
+/** 🔗 Smart Payment Link (com campos de produto) */
+export interface SmartPaymentLink {
+  id: string;
+  title: string;
+  description?: string;
+  amount: number;
+  currency: Currency;
+  status: 'active' | 'expired' | 'paid' | 'cancelled';
+  is_single_use: boolean;
+  sales_count: number;
+  shareable_url?: string;
+  success_url?: string;
+  store_id?: string;
+  store_slug?: string;
+  created_at: string;
+  expires_at?: string;
+}
+
+/** 👤 Cliente do Mini-CRM (pagador) */
+export interface CheckoutCustomer {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  document?: string;
+  document_type?: 'CPF' | 'NIF' | 'CNPJ' | 'PASSPORT';
+  total_spent: number;
+  total_spent_currency: string;
+  transactions_count: number;
+  last_purchase_at: string;
+  created_at: string;
 }
 
 /** 🔌 Gateway de Pagamento */

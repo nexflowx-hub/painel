@@ -5,46 +5,40 @@
  */
 
 /* ═══════════════════════════════════════════════════════════
-   ENUMS — Runtime-safe const objects + TypeScript types
-   Exported as const objects to prevent Vercel Turbopack SSR
-   ReferenceError when import type is not properly erased.
+   ENUMS — Pure TypeScript union types (no runtime values)
+
+   Using plain union types instead of `const` objects avoids
+   Vercel Turbopack SSR tree-shaking collisions where
+   `export const X` + `export type X` with the same name
+   caused ReferenceError at module evaluation.
    ═══════════════════════════════════════════════════════════ */
 
 /** Papéis dentro de uma Organização */
-export const OrgRole = { ADMIN: 'ADMIN', OPERATOR: 'OPERATOR', ACCOUNT_MANAGER: 'ACCOUNT_MANAGER' } as const;
-export type OrgRole = (typeof OrgRole)[keyof typeof OrgRole];
+export type OrgRole = 'ADMIN' | 'OPERATOR' | 'ACCOUNT_MANAGER';
 
 /** Níveis KYC Progressivos — Define limites e taxas */
-export const TierLevel = { TIER_0_UNVERIFIED: 'TIER_0_UNVERIFIED', TIER_1_BASIC: 'TIER_1_BASIC', TIER_2_VERIFIED: 'TIER_2_VERIFIED', TIER_3_CORPORATE: 'TIER_3_CORPORATE' } as const;
-export type TierLevel = (typeof TierLevel)[keyof typeof TierLevel];
+export type TierLevel = 'TIER_0_UNVERIFIED' | 'TIER_1_BASIC' | 'TIER_2_VERIFIED' | 'TIER_3_CORPORATE';
 
 /** Estado da Conta do Utilizador */
-export const AccountStatus = { ACTIVE: 'ACTIVE', SUSPENDED: 'SUSPENDED', BLOCKED: 'BLOCKED' } as const;
-export type AccountStatus = (typeof AccountStatus)[keyof typeof AccountStatus];
+export type AccountStatus = 'ACTIVE' | 'SUSPENDED' | 'BLOCKED';
 
 /** Moedas Suportadas */
-export const Currency = { EUR: 'EUR', BRL: 'BRL', USDT: 'USDT', USD: 'USD' } as const;
-export type Currency = (typeof Currency)[keyof typeof Currency];
+export type Currency = 'EUR' | 'BRL' | 'USDT' | 'USD';
 
 /** Tipos de Transação (Ledger) */
-export const TransactionType = { PROXY_INCOMING: 'PROXY_INCOMING', SETTLEMENT: 'SETTLEMENT', PAYOUT: 'PAYOUT', SWAP: 'SWAP', TRANSFER: 'TRANSFER', FEE: 'FEE' } as const;
-export type TransactionType = (typeof TransactionType)[keyof typeof TransactionType];
+export type TransactionType = 'PROXY_INCOMING' | 'SETTLEMENT' | 'PAYOUT' | 'SWAP' | 'TRANSFER' | 'FEE';
 
 /** Estado de uma Transação */
-export const TransactionStatus = { INCOMING: 'INCOMING', PENDING: 'PENDING', COMPLETED: 'COMPLETED', BLOCKED: 'BLOCKED', FAILED: 'FAILED' } as const;
-export type TransactionStatus = (typeof TransactionStatus)[keyof typeof TransactionStatus];
+export type TransactionStatus = 'INCOMING' | 'PENDING' | 'COMPLETED' | 'BLOCKED' | 'FAILED';
 
 /** Tipos de Ticket de Operação */
-export const TicketType = { MANUAL_WITHDRAWAL: 'MANUAL_WITHDRAWAL', TIER_UPGRADE: 'TIER_UPGRADE', FEE_ADJUSTMENT: 'FEE_ADJUSTMENT', SUPPORT: 'SUPPORT' } as const;
-export type TicketType = (typeof TicketType)[keyof typeof TicketType];
+export type TicketType = 'MANUAL_WITHDRAWAL' | 'TIER_UPGRADE' | 'FEE_ADJUSTMENT' | 'SUPPORT';
 
 /** Estado de um Ticket */
-export const TicketStatus = { OPEN: 'OPEN', IN_PROGRESS: 'IN_PROGRESS', RESOLVED: 'RESOLVED', REJECTED: 'REJECTED' } as const;
-export type TicketStatus = (typeof TicketStatus)[keyof typeof TicketStatus];
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
 
 /** Papel principal do utilizador no sistema (para UI routing) */
-export const AtlasRole = { customer: 'customer', merchant: 'merchant', admin: 'admin' } as const;
-export type AtlasRole = (typeof AtlasRole)[keyof typeof AtlasRole];
+export type AtlasRole = 'customer' | 'merchant' | 'admin';
 
 /* ═══════════════════════════════════════════════════════════
    MODELS — Espelho dos modelos Prisma (campos de saída)

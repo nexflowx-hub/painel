@@ -481,7 +481,10 @@ function atlasMockResponse<T>(endpoint: string, method?: string): T {
       transactionId: 'dep-mock-001',
       status: 'PENDING' as const,
       routes: [
-        { provider: 'misticpay', providerName: 'MisticPay PIX', method: 'PIX', currency: 'BRL', estimatedFee: 0.5, estimatedArrival: '< 30s', payload: { pixCode: '00020126580014br.gov.bcb.pix0136a1b2c3d4-e5f6-7890-abcd-ef1234567890220Teste PIX5204000053039865802BR5925NEXFLOWX TECNOLOGIA LTDA6009SAO PAULO62070503***63041D3D' } },
+        { provider: 'internal', providerName: 'PIX Instantâneo', method: 'PIX', currency: 'BRL', estimatedFee: 0, estimatedArrival: '< 30s', payload: { pixCode: '00020126580014br.gov.bcb.pix0136a1b2c3d4-e5f6-7890-abcd-ef1234567890220Teste PIX5204000053039865802BR5925ATLAS CORE BANKING6009SAO PAULO62070503***63041D3D' } },
+        { provider: 'internal', providerName: 'Transferência Bancária SEPA', method: 'BANK_TRANSFER', currency: 'EUR', estimatedFee: 0, estimatedArrival: 'D+1', payload: { bankDetails: { iban: 'PT50123456789012345678901', bic: 'BNPTPTPP', beneficiary: 'Atlas Core Banking', reference: 'DEP-001' } } },
+        { provider: 'internal', providerName: 'Cartão de Crédito', method: 'CARD', currency: 'EUR', estimatedFee: 1.5, estimatedArrival: '< 1min', payload: { redirectUrl: 'https://checkout.example.com/pay' } },
+        { provider: 'internal', providerName: 'Wire Transfer', method: 'BANK_TRANSFER', currency: 'USD', estimatedFee: 5, estimatedArrival: 'D+2', payload: { bankDetails: { iban: 'US12345678901234567890', bic: 'BOFAUS3N', beneficiary: 'Atlas Core Banking', reference: 'DEP-002' } } },
       ],
     } as T;
   }

@@ -69,10 +69,6 @@ export default function TradingViewTicker() {
   return (
     <div 
       className="w-full overflow-hidden relative"
-      style={{
-        // Black background to match the dark theme
-        background: '#080a0f',
-      }}
     >
       {/* Subtle top border glow */}
       <div 

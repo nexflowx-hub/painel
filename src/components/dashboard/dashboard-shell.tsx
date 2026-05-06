@@ -36,8 +36,6 @@ const SettingsSecurity = dynamic(() => import('./settings-security'), { loading:
 const AdminApprovalTable = dynamic(() => import('./admin-approval-table'), { loading: () => <SectionLoading /> });
 const SystemLiquidityPanel = dynamic(() => import('./system-liquidity-panel'), { loading: () => <SectionLoading /> });
 const ApiManagement = dynamic(() => import('./api-management'), { loading: () => <SectionLoading /> });
-const StoresPanel = dynamic(() => import('./stores-panel'), { loading: () => <SectionLoading /> });
-const PaymentLinksPanel = dynamic(() => import('./payment-links-panel'), { loading: () => <SectionLoading /> });
 const GatewaysPanel = dynamic(() => import('./gateways-panel'), { loading: () => <SectionLoading /> });
 const CheckoutPanel = dynamic(() => import('./checkout-panel'), { loading: () => <SectionLoading /> });
 

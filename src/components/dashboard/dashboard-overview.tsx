@@ -5,9 +5,9 @@ import { useDashboardStore } from '@/lib/dashboard-store';
 import { TIER_CONFIG } from '@/lib/rbac';
 import { IS_DEV_MOCK } from '@/lib/auth-store';
 import {
-  TrendingDown, Clock, Wallet, Landmark,
-  ArrowUpRight, Download, ArrowLeftRight,
-  Banknote, Activity, ShieldAlert,
+  TrendingDown, Clock, Wallet,
+  Download, ArrowLeftRight,
+  Banknote, ShieldAlert,
 } from 'lucide-react';
 import WorldMapNetwork from './world-map-network';
 import TradingViewTicker from './tradingview-ticker';
@@ -37,7 +37,7 @@ function isCreditType(type: string): boolean {
   return type === 'PROXY_INCOMING' || type === 'SETTLEMENT';
 }
 
-/* ─── KPI Card ─── */
+/* ─── KPI Card (horizontal: icon-left, text-right) ─── */
 function KPICard({
   title, value, subtitle, color, icon: Icon,
 }: {
@@ -48,34 +48,38 @@ function KPICard({
   icon: React.ElementType;
 }) {
   return (
-    <div className="glass-panel p-5 hover-lift cursor-default">
-      <div className="flex items-start justify-between mb-3">
-        <div className="min-w-0">
-          <p className="nex-mono text-[10px] uppercase tracking-wider mb-1 truncate" style={{ color: '#A0A0A0' }}>
-            {title}
-          </p>
-          <p className="text-2xl font-bold nex-mono truncate" style={{ color: color }}>
-            {value}
-          </p>
-        </div>
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: `${color}10`, border: `1px solid ${color}25` }}
-        >
-          <Icon className="w-5 h-5" style={{ color }} />
-        </div>
+    <div
+      className="glass-panel p-4 sm:p-5 hover-lift cursor-default flex items-center gap-4"
+      style={{ minHeight: '80px' }}
+    >
+      {/* Icon */}
+      <div
+        className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: `${color}10`, border: `1px solid ${color}25` }}
+      >
+        <Icon className="w-5 h-5" style={{ color }} />
       </div>
-      {subtitle && (
-        <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-          {subtitle}
+
+      {/* Text content */}
+      <div className="flex flex-col justify-center min-w-0 flex-1">
+        <p className="nex-mono text-[10px] uppercase tracking-wider mb-0.5 truncate" style={{ color: '#A0A0A0' }}>
+          {title}
         </p>
-      )}
+        <p className="text-lg sm:text-xl font-bold nex-mono truncate" style={{ color }}>
+          {value}
+        </p>
+        {subtitle && (
+          <p className="nex-mono text-[10px] mt-0.5 truncate" style={{ color: '#606060' }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
-/* ─── Quick Action Card ─── */
-function QuickAction({
+/* ─── Quick Action Pill Button ─── */
+function QuickActionPill({
   icon: Icon, label, onClick, color,
 }: {
   icon: React.ElementType; label: string; onClick: () => void; color: string;
@@ -83,18 +87,21 @@ function QuickAction({
   return (
     <button
       onClick={onClick}
-      className="glass-panel p-5 hover-lift text-left group flex flex-col items-start gap-3 w-full"
+      className="group flex items-center gap-2.5 px-4 py-3 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] w-full sm:w-auto justify-center"
+      style={{
+        background: `${color}08`,
+        border: `1px solid ${color}18`,
+      }}
     >
       <div
-        className="w-11 h-11 rounded-lg flex items-center justify-center transition-all group-hover:scale-105"
-        style={{ background: `${color}10`, border: `1px solid ${color}20` }}
+        className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all group-hover:scale-105"
+        style={{ background: `${color}12`, border: `1px solid ${color}20` }}
       >
-        <Icon className="w-5 h-5" style={{ color }} />
+        <Icon className="w-4.5 h-4.5" style={{ color }} />
       </div>
-      <div className="flex items-center justify-between w-full">
-        <span className="text-sm font-medium" style={{ color: '#FFFFFF' }}>{label}</span>
-        <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" style={{ color: '#606060' }} />
-      </div>
+      <span className="text-sm font-medium whitespace-nowrap" style={{ color: '#FFFFFF' }}>
+        {label}
+      </span>
     </button>
   );
 }
@@ -152,26 +159,27 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      {/* TradingView Ticker Tape */}
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{
-          background: 'rgba(10, 13, 20, 0.6)',
-          border: '1px solid rgba(0, 212, 170, 0.08)',
-        }}
-      >
-        <TradingViewTicker />
-      </div>
+      {/* ── 1. TradingView Ticker Tape (transparent, no wrapper) ── */}
+      <TradingViewTicker />
 
-      {/* Header row with DEV_MOCK badge */}
+      {/* DEV_MOCK indicator */}
       {IS_DEV_MOCK && (
         <div className="flex items-center justify-between">
           <DevMockBadge />
         </div>
       )}
 
-      {/* KPI Cards — 4-Balance Pipeline: Incoming, Pending, Available, Blocked */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── 2. World Map — Full Width, Prominent ── */}
+      <div className="w-full overflow-hidden rounded-2xl" style={{ height: '240px', border: '1px solid rgba(255,255,255,0.04)' }}>
+        <div className="w-full h-full" style={{ position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+            <WorldMapNetwork />
+          </div>
+        </div>
+      </div>
+
+      {/* ── 3. KPI Cards — 4-Balance Pipeline ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard
           title="Entrada (Hoje)"
           value={fmt(totals.incoming, primaryCurrency)}
@@ -202,93 +210,104 @@ export default function DashboardOverview() {
         />
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h3 className="nex-mono text-[10px] uppercase tracking-widest mb-3" style={{ color: '#606060' }}>
+      {/* ── 4. Quick Action Buttons ── */}
+      <div
+        className="glass-panel p-3 sm:p-4"
+        style={{ background: 'rgba(14,17,23,0.6)', border: '1px solid rgba(255,255,255,0.05)' }}
+      >
+        <p className="nex-mono text-[10px] uppercase tracking-widest mb-3 px-1" style={{ color: '#606060' }}>
           Ações Rápidas
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <QuickAction icon={Landmark} label="Tesouraria" onClick={() => setActiveSection('wallets')} color="#00B4D8" />
-          <QuickAction icon={ArrowLeftRight} label="Converter Moeda" onClick={() => setActiveSection('swap')} color="#00B4D8" />
-          <QuickAction icon={Banknote} label="Solicitar Payout" onClick={() => setActiveSection('payouts')} color="#FFB800" />
-          <QuickAction icon={Activity} label="Ver Transações" onClick={() => setActiveSection('activity')} color="#A855F7" />
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <QuickActionPill
+            icon={Download}
+            label="Depositar"
+            onClick={() => setActiveSection('deposits')}
+            color="#00D4AA"
+          />
+          <QuickActionPill
+            icon={ArrowLeftRight}
+            label="Converter Moeda"
+            onClick={() => setActiveSection('swap')}
+            color="#00B4D8"
+          />
+          <QuickActionPill
+            icon={Banknote}
+            label="Levantamentos"
+            onClick={() => setActiveSection('payouts')}
+            color="#FFB800"
+          />
         </div>
       </div>
 
-      {/* Bottom grid: Activity + World Map */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Recent Activity */}
-        <div className="glass-panel p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold" style={{ color: '#FFFFFF' }}>Atividade Recente</h3>
-            <button
-              onClick={() => setActiveSection('activity')}
-              className="nex-mono text-[10px] uppercase tracking-wider transition-colors"
-              style={{ color: '#00D4AA' }}
-            >
-              Ver tudo →
-            </button>
-          </div>
+      {/* ── 5. Recent Activity — Full Width ── */}
+      <div className="glass-panel p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold" style={{ color: '#FFFFFF' }}>Atividade Recente</h3>
+          <button
+            onClick={() => setActiveSection('activity')}
+            className="nex-mono text-[10px] uppercase tracking-wider transition-colors"
+            style={{ color: '#00D4AA' }}
+          >
+            Ver tudo →
+          </button>
+        </div>
 
-          {transactionsQuery.isLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full" style={{ background: '#333' }} />
-                  <div className="h-3 flex-1 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
-                </div>
-              ))}
-            </div>
-          ) : transactions.length === 0 ? (
-            <p className="nex-mono text-xs" style={{ color: '#606060' }}>Sem transações recentes.</p>
-          ) : (
-            <div className="space-y-1 max-h-80 overflow-y-auto cyber-scrollbar">
-              {transactions.map((entry) => {
-                const credit = isCreditType(entry.type);
-                return (
-                  <div
-                    key={entry.id}
-                    className="flex items-center justify-between py-2.5 px-2 rounded-lg transition-colors"
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <TransactionStatusDot status={entry.status} />
-                      <TypeBadge type={entry.type} />
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium truncate" style={{ color: '#FFFFFF' }}>
-                          {entry.description || entry.type}
-                        </p>
-                        <p className="nex-mono text-[10px] truncate" style={{ color: '#606060' }}>
-                          {new Date(entry.createdAt).toLocaleString('pt-PT')}
-                          {entry.feeApplied > 0 && (
-                            <span style={{ color: '#FF5252' }}> · Fee: {fmt(entry.feeApplied, entry.currency)}</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0 ml-2">
-                      <p
-                        className="nex-mono text-sm font-semibold"
-                        style={{
-                          color: credit ? '#00D4AA' : '#FF5252',
-                        }}
-                      >
-                        {credit ? '+' : '-'}
-                        {fmt(entry.amount, entry.currency)}
+        {transactionsQuery.isLoading ? (
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full" style={{ background: '#333' }} />
+                <div className="h-3 flex-1 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
+              </div>
+            ))}
+          </div>
+        ) : transactions.length === 0 ? (
+          <p className="nex-mono text-xs" style={{ color: '#606060' }}>Sem transações recentes.</p>
+        ) : (
+          <div className="space-y-1 max-h-80 overflow-y-auto cyber-scrollbar">
+            {transactions.map((entry) => {
+              const credit = isCreditType(entry.type);
+              return (
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between py-2.5 px-2 rounded-lg transition-colors"
+                  style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <TransactionStatusDot status={entry.status} />
+                    <TypeBadge type={entry.type} />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate" style={{ color: '#FFFFFF' }}>
+                        {entry.description || entry.type}
+                      </p>
+                      <p className="nex-mono text-[10px] truncate" style={{ color: '#606060' }}>
+                        {new Date(entry.createdAt).toLocaleString('pt-PT')}
+                        {entry.feeApplied > 0 && (
+                          <span style={{ color: '#FF5252' }}> · Fee: {fmt(entry.feeApplied, entry.currency)}</span>
+                        )}
                       </p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* World Map */}
-        <WorldMapNetwork />
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <p
+                      className="nex-mono text-sm font-semibold"
+                      style={{
+                        color: credit ? '#00D4AA' : '#FF5252',
+                      }}
+                    >
+                      {credit ? '+' : '-'}
+                      {fmt(entry.amount, entry.currency)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Partners Marquee */}
+      {/* ── 6. Partners Marquee ── */}
       <PartnersMarquee />
     </div>
   );

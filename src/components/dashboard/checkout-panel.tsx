@@ -7,13 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
-  Store, Link2, Users, Plus, Copy, Check, ExternalLink, X,
-  Palette, Globe, Phone, FileText, ShoppingCart,
-  Eye, TrendingUp, Clock, Mail, Hash,
+  Store, Link2, Users, Plus, Copy, Check, ExternalLink,
+  Palette, Phone, FileText, ShoppingCart, Eye,
+  TrendingUp, Clock, Mail, Hash,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type {
@@ -395,29 +396,15 @@ function StoreSettingsTab() {
           </span>
         </div>
 
-        {/* Logo Upload */}
-        <InputField label="Logo da Loja">
-          <div
-            className="flex flex-col items-center justify-center gap-2 py-8 rounded-lg cursor-pointer transition-all hover-lift"
-            style={{
-              background: 'rgba(255,255,255,0.015)',
-              border: '2px dashed rgba(255,255,255,0.08)',
-            }}
-            onClick={() => toast.info('Upload de logo será implementado com integração de storage')}
-          >
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.03)' }}
-            >
-              <ShoppingCart className="w-5 h-5" style={{ color: '#444' }} />
-            </div>
-            <span className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-              Clique ou arraste para carregar
-            </span>
-            <span className="nex-mono text-[9px]" style={{ color: '#333' }}>
-              SVG, PNG ou JPG · Max 2MB
-            </span>
-          </div>
+        {/* Logo URL */}
+        <InputField label="URL do Logo" hint="Cole o link da imagem do logo da sua loja">
+          <Input
+            value={store.logo_url || ''}
+            onChange={(e) => { /* logo URL stored locally for now */ }}
+            placeholder="https://example.com/logo.png"
+            className="nex-mono text-sm"
+            style={inputStyle}
+          />
         </InputField>
 
         {/* Primary Color */}
@@ -563,9 +550,8 @@ function PaymentLinksTab() {
   const createLink = useCreatePaymentLink();
   const links: SmartPaymentLink[] = (linksData as SmartPaymentLink[] | undefined) ?? MOCK_LINKS;
 
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCurrency, setNewCurrency] = useState('EUR');
   const [singleUse, setSingleUse] = useState(false);
@@ -602,12 +588,13 @@ function PaymentLinksTab() {
 
   const resetForm = () => {
     setNewTitle('');
-    setNewDescription('');
     setNewAmount('');
     setNewCurrency('EUR');
     setSingleUse(false);
     setGeneratedLink('');
   };
+
+  const closeDialog = () => { resetForm(); setDialogOpen(false); };
 
   return (
     <div className="space-y-6">
@@ -648,7 +635,7 @@ function PaymentLinksTab() {
           </div>
         </div>
         <Button
-          onClick={() => { resetForm(); setSheetOpen(true); }}
+          onClick={() => { resetForm(); setDialogOpen(true); }}
           className="flex items-center gap-2 nex-mono text-[11px] uppercase tracking-wider font-semibold px-4 py-2.5 rounded-lg transition-all hover-lift"
           style={{
             background: 'rgba(0,180,216,0.08)',
@@ -882,25 +869,25 @@ function PaymentLinksTab() {
         </div>
       )}
 
-      {/* Create Link Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={(open) => { if (!open) resetForm(); setSheetOpen(open); }}>
-        <SheetContent
-          side="right"
-          className="w-[420px] overflow-y-auto cyber-scrollbar"
-          style={{ background: '#0E1117', borderLeft: '1px solid rgba(255,255,255,0.06)' }}
+      {/* Create Link Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <DialogContent
+          showCloseButton={false}
+          className="sm:max-w-md p-0 overflow-hidden"
+          style={{ background: '#0E1117', border: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <SheetHeader className="space-y-1 pb-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <SheetTitle className="text-base font-semibold flex items-center gap-2" style={{ color: '#FFFFFF' }}>
+          <DialogHeader className="p-6 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <DialogTitle className="text-base font-semibold flex items-center gap-2" style={{ color: '#FFFFFF' }}>
               <Plus className="w-5 h-5" style={{ color: '#00B4D8' }} />
               Novo Link de Pagamento
-            </SheetTitle>
-            <SheetDescription className="nex-mono text-[10px]" style={{ color: '#606060' }}>
+            </DialogTitle>
+            <DialogDescription className="nex-mono text-[10px]" style={{ color: '#606060' }}>
               Crie um checkout link para cobrar clientes
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           {!generatedLink ? (
-            <div className="space-y-5 pt-6">
+            <div className="p-6 space-y-5">
               <InputField label="Título do Produto/Serviço">
                 <Input
                   value={newTitle}
@@ -908,17 +895,6 @@ function PaymentLinksTab() {
                   placeholder="Ex: Plano Premium Mensal"
                   className="nex-mono text-sm"
                   style={inputStyle}
-                />
-              </InputField>
-
-              <InputField label="Descrição">
-                <Textarea
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Descreva o produto ou serviço..."
-                  className="nex-mono text-sm resize-none"
-                  style={{ ...inputStyle, minHeight: '80px' }}
-                  rows={3}
                 />
               </InputField>
 
@@ -955,7 +931,7 @@ function PaymentLinksTab() {
                 className="flex items-center justify-between p-4 rounded-lg"
                 style={{
                   background: singleUse ? 'rgba(255,184,0,0.04)' : 'rgba(255,255,255,0.015)',
-                  border: `1px solid ${singleUse ? 'rgba(255,184,0,0.15)' : 'rgba(255,255,255,0.05)'}`,
+                  border: '1px solid rgba(255,255,255,0.05)',
                 }}
               >
                 <div>
@@ -971,29 +947,35 @@ function PaymentLinksTab() {
                 <Switch checked={singleUse} onCheckedChange={setSingleUse} />
               </div>
 
-              <Button
-                onClick={handleCreate}
-                disabled={isCreating || !newTitle.trim() || !newAmount}
-                className="w-full nex-mono text-[11px] uppercase tracking-wider font-semibold py-3 rounded-lg transition-all"
-                style={{
-                  background: isCreating ? 'rgba(0,180,216,0.15)' : '#00B4D8',
-                  color: '#0F1117',
-                  border: 'none',
-                }}
-              >
-                {isCreating ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 border-2 border-[#0F1117] border-t-transparent rounded-full animate-spin" />
-                    A gerar link...
-                  </span>
-                ) : (
-                  'Gerar Link de Pagamento'
-                )}
-              </Button>
+              <div className="flex gap-2 pt-1">
+                <Button
+                  onClick={handleCreate}
+                  disabled={isCreating || !newTitle.trim() || !newAmount}
+                  className="flex-1 nex-mono text-[11px] uppercase tracking-wider font-semibold py-3 rounded-lg transition-all"
+                  style={{
+                    background: isCreating ? 'rgba(0,180,216,0.15)' : '#00B4D8',
+                    color: '#0F1117',
+                    border: 'none',
+                  }}
+                >
+                  {isCreating ? 'A gerar link...' : 'Gerar Link'}
+                </Button>
+                <Button
+                  onClick={closeDialog}
+                  className="nex-mono text-[11px] uppercase tracking-wider font-semibold px-4 py-3 rounded-lg transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: '#A0A0A0',
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
             </div>
           ) : (
             /* Generated Link Display */
-            <div className="pt-6 space-y-5">
+            <div className="p-6 space-y-5">
               <div className="flex items-center gap-2 mb-2">
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -1048,8 +1030,8 @@ function PaymentLinksTab() {
               </div>
 
               <Button
-                onClick={() => { setGeneratedLink(''); setSheetOpen(false); }}
-                className="w-full nex-mono text-[11px] uppercase tracking-wider font-semibold py-3 rounded-lg mt-4 transition-all"
+                onClick={closeDialog}
+                className="w-full nex-mono text-[11px] uppercase tracking-wider font-semibold py-3 rounded-lg mt-2 transition-all"
                 style={{
                   background: 'rgba(255,255,255,0.03)',
                   border: '1px solid rgba(255,255,255,0.08)',
@@ -1060,8 +1042,8 @@ function PaymentLinksTab() {
               </Button>
             </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

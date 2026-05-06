@@ -76,6 +76,14 @@ function CurrencyIcon({ currency }: { currency: string }) {
   );
 }
 
+/* ─── Method Label Mapping (provider-agnostic) ─── */
+const METHOD_LABELS: Record<string, string> = {
+  PIX: 'PIX Instantâneo',
+  CARD: 'Cartão de Crédito / Débito',
+  BANK_TRANSFER: 'Transferência Bancária',
+  CRYPTO: 'Pagamento em Criptomoeda',
+};
+
 /* ─── Route Method Icons ─── */
 function RouteMethodIcon({ method }: { method: string }) {
   switch (method) {
@@ -118,7 +126,7 @@ function DepositRouteCard({ route }: { route: DepositRoute }) {
         <div className="flex items-center gap-2">
           <RouteMethodIcon method={route.method} />
           <span className="text-sm font-semibold" style={{ color: '#FFFFFF' }}>
-            {route.providerName}
+            {METHOD_LABELS[route.method] ?? route.method}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -180,14 +188,14 @@ function DepositRouteCard({ route }: { route: DepositRoute }) {
         </div>
       )}
 
-      {/* Stripe Client Secret */}
+      {/* Card Payment Secret */}
       {payload.stripeClientSecret && (
-        <div className="flex items-center gap-2 p-2.5 rounded-lg" style={{ background: 'rgba(99, 91, 255, 0.06)', border: '1px solid rgba(99, 91, 255, 0.15)' }}>
-          <CreditCard className="w-4 h-4" style={{ color: '#635BFF' }} />
+        <div className="flex items-center gap-2 p-2.5 rounded-lg" style={{ background: 'rgba(0, 212, 170, 0.06)', border: '1px solid rgba(0, 212, 170, 0.15)' }}>
+          <CreditCard className="w-4 h-4" style={{ color: '#00D4AA' }} />
           <span className="text-xs" style={{ color: '#A0A0A0' }}>
-            Pagamento por cartão disponível via Stripe
+            Pagamento por cartão disponível
           </span>
-          <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(99, 91, 255, 0.15)', color: '#635BFF' }}>
+          <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(0, 212, 170, 0.15)', color: '#00D4AA' }}>
             Pronto
           </span>
         </div>

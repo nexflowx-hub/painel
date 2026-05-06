@@ -38,3 +38,23 @@ Stage Summary:
 - RBAC: 3 roles, 17 secções, menu dinâmico por permissão
 - 4-balance model: Incoming, Pending, Available, Blocked
 - Novos fluxos: KYC progressivo (Tier 0-3), Fee Schedule, Operation Tickets
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Fix client-side crash after login (USDT currency error + 404 routes + manifest warnings)
+
+Work Log:
+- Identified root cause: dashboard-overview.tsx fmt() function lacked try-catch for non-ISO currency codes (USDT is not valid for Intl.NumberFormat)
+- Added try-catch with symbol fallback map for USDT (₮), BTC (₿), ETH (Ξ), USDC
+- Created missing legal page routes: /legal/terms, /legal/privacy, /legal/refund (all returning 200)
+- Rebranded legal layout from "Atlas Global Payments" to "Atlas Core Banking"
+- Fixed manifest.json: added params object to share_target (was causing browser warning), rebranded app name/id
+- Created minimal favicon.ico (teal 16x16) to prevent 404 on favicon requests
+- All routes verified: / (200), /legal/terms (200), /legal/privacy (200), /legal/refund (200)
+
+Stage Summary:
+- Root crash fixed: USDT currency in NumberFormat now handled gracefully
+- 3 new legal pages created with proper content
+- Manifest warnings resolved
+- Pushed to GitHub: commit cf11396

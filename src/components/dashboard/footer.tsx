@@ -1,9 +1,9 @@
 'use client'
 
 import { Logo3D } from '@/components/ui/logo-3d'
-import { useAuthStore, getUserRole, IS_DEV_MOCK } from '@/lib/auth-store'
+import { useAuthStore, getUserRole } from '@/lib/auth-store'
 import { useI18n } from '@/lib/i18n'
-import { LogOut, Terminal, ExternalLink } from 'lucide-react'
+import { LogOut, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 
 // Payment method icons using local SVGs
@@ -19,7 +19,7 @@ const paymentMethods = [
 ]
 
 export default function Footer() {
-  const { user, logout, isDevMode } = useAuthStore()
+  const { user, logout } = useAuthStore()
   const { t } = useI18n()
   const role = getUserRole(user)
 
@@ -107,12 +107,6 @@ export default function Footer() {
             <span className="nex-mono text-[10px] hidden sm:block" style={{ color: 'var(--muted-foreground)' }}>
               {user.fullName || user.email || 'User'} · <span className="uppercase">{role}</span>
             </span>
-          )}
-          {IS_DEV_MOCK && isDevMode && (
-            <div className="dev-badge hidden md:flex items-center gap-1 px-2 py-1 rounded text-[9px]" style={{ background: 'rgba(255,184,0,0.1)', color: '#FFB800' }}>
-              <Terminal className="w-3 h-3" />
-              DEV
-            </div>
           )}
           <button
             onClick={logout}

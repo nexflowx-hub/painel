@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { authApi } from '@/lib/api/atlas-client';
-import { useAuthStore, IS_DEV_MOCK } from '@/lib/auth-store';
+import { useAuthStore } from '@/lib/auth-store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Lock, Mail, Shield, Bell, Loader2, CheckCircle, Key, AlertTriangle } from 'lucide-react';
+import { Lock, Mail, Shield, Bell, Loader2, CheckCircle, Key } from 'lucide-react';
 
 export default function SettingsSecurity() {
   const { user } = useAuthStore();
@@ -21,12 +21,6 @@ export default function SettingsSecurity() {
         <p className="nex-mono text-xs" style={{ color: '#606060' }}>
           Gerir conta, segurança e preferências de notificação.
         </p>
-        {IS_DEV_MOCK && (
-          <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,184,0,0.06)', border: '1px solid rgba(255,184,0,0.15)' }}>
-            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#FFB800' }} />
-            <span className="nex-mono text-[10px]" style={{ color: '#FFB800' }}>DEV_MOCK ativo — alterações não persistem no backend.</span>
-          </div>
-        )}
       </div>
 
       <Tabs defaultValue="password">
@@ -270,12 +264,6 @@ function NotificationsTab() {
         <Bell className="w-4 h-4" style={{ color: '#FFB800' }} />
         Preferências de Notificação
       </h4>
-      {IS_DEV_MOCK && (
-        <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,184,0,0.06)', border: '1px solid rgba(255,184,0,0.15)' }}>
-          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#FFB800' }} />
-          <span className="nex-mono text-[10px]" style={{ color: '#FFB800' }}>API de notificações em desenvolvimento — alterações locais apenas.</span>
-        </div>
-      )}
       <div className="space-y-4">
         {items.map((item) => (
           <div

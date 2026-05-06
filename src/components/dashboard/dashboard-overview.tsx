@@ -3,7 +3,6 @@
 import { useWallets, useWalletTotals, useTransactions } from '@/hooks/use-wallets';
 import { useDashboardStore } from '@/lib/dashboard-store';
 import { TIER_CONFIG } from '@/lib/rbac';
-import { IS_DEV_MOCK } from '@/lib/auth-store';
 import {
   TrendingDown, Clock, Wallet,
   Download, ArrowLeftRight,
@@ -127,23 +126,6 @@ function TypeBadge({ type }: { type: string }) {
   return <span className={`neon-badge ${map[type] || 'neon-badge-teal'}`}>{type}</span>;
 }
 
-/* ─── DEV_MOCK Badge ─── */
-function DevMockBadge() {
-  return (
-    <span
-      className="nex-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-md inline-flex items-center gap-1.5"
-      style={{
-        background: 'rgba(255, 184, 0, 0.10)',
-        border: '1px solid rgba(255, 184, 0, 0.25)',
-        color: '#FFB800',
-      }}
-    >
-      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#FFB800' }} />
-      DEV_MOCK
-    </span>
-  );
-}
-
 /* ─── Main Component ─── */
 export default function DashboardOverview() {
   const { setActiveSection } = useDashboardStore();
@@ -161,13 +143,6 @@ export default function DashboardOverview() {
     <div className="space-y-6 animate-fade-up">
       {/* ── 1. TradingView Ticker Tape (transparent, no wrapper) ── */}
       <TradingViewTicker />
-
-      {/* DEV_MOCK indicator */}
-      {IS_DEV_MOCK && (
-        <div className="flex items-center justify-between">
-          <DevMockBadge />
-        </div>
-      )}
 
       {/* ── 2. World Map — Full Width, Prominent ── */}
       <div className="w-full overflow-hidden rounded-2xl" style={{ height: '240px', border: '1px solid rgba(255,255,255,0.04)' }}>

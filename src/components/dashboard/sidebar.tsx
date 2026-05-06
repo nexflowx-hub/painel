@@ -4,7 +4,7 @@ import { useDashboardStore } from '@/lib/dashboard-store';
 import { useAuthStore } from '@/lib/auth-store';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getSectionsByCategory, type DashboardSection } from '@/lib/rbac';
-import { getUserRole, IS_DEV_MOCK } from '@/lib/auth-store';
+import { getUserRole } from '@/lib/auth-store';
 import {
   LayoutDashboard, Landmark, ReceiptText,
   Store, Link2, Plug, Code2,
@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { Logo3D } from '@/components/ui/logo-3d';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
-import { Terminal } from 'lucide-react';
 
 /** Map icon names to components */
 const iconMap: Record<string, React.ElementType> = {

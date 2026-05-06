@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuthStore, IS_DEV_MOCK } from '@/lib/auth-store';
-import { Eye, EyeOff, Loader2, Lock, Mail, Terminal, UserPlus, LogIn, User, Phone, ArrowRight, Shield, Zap, Globe, Wallet, ArrowDownUp, TrendingUp } from 'lucide-react';
+import { useAuthStore } from '@/lib/auth-store';
+import { Eye, EyeOff, Loader2, Lock, Mail, UserPlus, LogIn, User, Phone, ArrowRight, Shield, Zap, Globe, Wallet, ArrowDownUp, TrendingUp } from 'lucide-react';
 import { Logo3D } from '@/components/ui/logo-3d';
 import CyberGridBackground from './cyber-grid-background';
 
@@ -105,13 +105,6 @@ export default function LoginPage() {
             ))}
           </div>
         </div>
-
-        {IS_DEV_MOCK && (
-          <div className="absolute top-8 left-8 dev-badge">
-            <Terminal className="w-3 h-3" />
-            DEV MOCK
-          </div>
-        )}
       </div>
 
       {/* RIGHT SIDE — Form */}
@@ -236,13 +229,6 @@ export default function LoginPage() {
               <Shield className="w-3 h-3" />
               Ligação encriptada TLS 1.3 · JWT + RBAC
             </div>
-
-            {IS_DEV_MOCK && (
-              <div className="mt-3 flex items-center justify-center gap-1.5 nex-mono text-[10px]" style={{ color: '#FFB800' }}>
-                <Terminal className="w-3 h-3" />
-                Dev mock ativo — qualquer credencial aceite
-              </div>
-            )}
           </div>
         </div>
       </div>

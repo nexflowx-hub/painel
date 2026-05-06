@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore, isAdmin, isCustomer } from '@/lib/auth-store';
-import { merchantApi, type MerchantApiKey, type MerchantApiKeyCreated } from '@/lib/api/atlas-client';
+import { merchantApi, type MerchantApiKeyResponse } from '@/lib/api/atlas-client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Code2, Key, Webhook, BookOpen, Lock, Plus, Eye, EyeOff, Copy,
+  Code2, Key, Webhook, BookOpen, Lock, Plus, Copy,
   CheckCircle, Loader2, ExternalLink, Shield, ArrowRight, RefreshCw,
 } from 'lucide-react';
 
@@ -80,7 +80,7 @@ function LockedState() {
         </div>
         <h3 className="text-lg font-semibold mb-2" style={{ color: '#FFFFFF' }}>API Access Locked</h3>
         <p className="nex-mono text-xs mb-6" style={{ color: '#A0A0A0' }}>
-          O acesso à API está disponível apenas para contas Merchant e Admin. Faça upgrade para aceder a integrações avançadas.
+          O acesso à API está disponível apenas para contas Merchant e Admin.
         </p>
         <button
           className="neon-btn-primary px-6 py-3 rounded-lg text-sm font-semibold flex items-center gap-2 mx-auto"
@@ -93,19 +93,6 @@ function LockedState() {
           <Shield className="w-4 h-4" />
           Solicitar Upgrade
         </button>
-        <div className="mt-6 grid grid-cols-2 gap-4 text-left">
-          {[
-            { title: 'REST API', desc: 'Endpoints completos para integração.' },
-            { title: 'Webhooks', desc: 'Notificações em tempo real.' },
-            { title: 'API Keys', desc: 'Gestão segura de credenciais.' },
-            { title: 'Sandbox', desc: 'Ambiente de testes incluso.' },
-          ].map((f) => (
-            <div key={f.title} className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-              <p className="text-xs font-medium" style={{ color: '#FFFFFF' }}>{f.title}</p>
-              <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
@@ -113,42 +100,43 @@ function LockedState() {
 
 /* ─── API Keys Tab ─── */
 function ApiKeysTab() {
-  const [keys, setKeys] = useState<MerchantApiKey[]>([]);
+  const [currentKey, setCurrentKey] = useState<MerchantApiKeyResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [newKeyData, setNewKeyData] = useState<MerchantApiKeyCreated | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [newKey, setNewKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadKeys = async () => {
+  const loadKey = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await merchantApi.listApiKeys();
-      setKeys(Array.isArray(data) ? data : []);
+      const data = await merchantApi.getApiKey();
+      setCurrentKey(data);
     } catch {
-      setKeys([]);
-      setError('Erro ao carregar chaves API.');
+      setCurrentKey(null);
+      setError('Erro ao carregar chave API.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadKeys(); }, []);
+  useEffect(() => { loadKey(); }, []);
 
-  const handleCreate = async () => {
-    setCreating(true);
+  const handleGenerate = async () => {
+    setGenerating(true);
     setError(null);
+    setNewKey(null);
     try {
-      const data = await merchantApi.generateApiKey('Atlas Core API Key');
-      if (data?.key) {
-        setNewKeyData(data);
-        loadKeys();
+      const data = await merchantApi.generateApiKey();
+      if (data?.apiKey) {
+        setNewKey(data.apiKey);
+        loadKey(); // Refresh current key
       }
     } catch {
       setError('Erro ao gerar chave API. Tente novamente.');
     } finally {
-      setCreating(false);
+      setGenerating(false);
     }
   };
 
@@ -157,22 +145,25 @@ function ApiKeysTab() {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // fallback
-    }
+    } catch { /* fallback */ }
+  };
+
+  const maskKey = (key: string) => {
+    if (key.length <= 12) return key;
+    return key.slice(0, 12) + '••••••••••••' + key.slice(-4);
   };
 
   return (
     <div className="glass-panel p-6">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold" style={{ color: '#FFFFFF' }}>Chaves API</h4>
+        <h4 className="text-sm font-semibold" style={{ color: '#FFFFFF' }}>Chave API</h4>
         <button
-          onClick={handleCreate}
-          disabled={creating}
+          onClick={handleGenerate}
+          disabled={generating}
           className="neon-btn-primary px-4 py-2 rounded-lg text-xs flex items-center gap-2 disabled:opacity-40"
         >
-          {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-          Criar Nova Chave
+          {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+          Gerar Nova Chave
         </button>
       </div>
 
@@ -183,57 +174,55 @@ function ApiKeysTab() {
       )}
 
       {/* New key reveal (shown once) */}
-      {newKeyData && (
+      {newKey && (
         <div className="p-4 rounded-lg mb-4" style={{ background: 'rgba(0,212,170,0.04)', border: '1px solid rgba(0,212,170,0.15)' }}>
           <p className="nex-mono text-[10px] uppercase tracking-wider mb-2" style={{ color: '#00D4AA' }}>
-            ⚠️ Nova Chave API (guarde em segurança — não será mostrada novamente)
+            ⚠️ Nova Chave API — guarde em segurança, não será mostrada novamente
           </p>
           <div className="flex items-center gap-2">
-            <code className="nex-mono text-xs flex-1 break-all" style={{ color: '#FFFFFF' }}>{newKeyData.key}</code>
-            <button onClick={() => handleCopy(newKeyData.key)} className="p-2 rounded hover:bg-white/5 transition-colors" style={{ color: '#00D4AA' }}>
+            <code className="nex-mono text-xs flex-1 break-all" style={{ color: '#FFFFFF' }}>{newKey}</code>
+            <button onClick={() => handleCopy(newKey)} className="p-2 rounded hover:bg-white/5 transition-colors" style={{ color: '#00D4AA' }}>
               {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
         </div>
       )}
 
-      {/* Keys list */}
+      {/* Current key display */}
       {loading ? (
         <div className="p-4 text-center">
           <div className="inline-block w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#00D4AA', borderTopColor: 'transparent' }} />
         </div>
-      ) : keys.length === 0 ? (
-        <p className="nex-mono text-xs text-center py-4" style={{ color: '#606060' }}>Nenhuma chave API criada.</p>
+      ) : !currentKey ? (
+        <p className="nex-mono text-xs text-center py-4" style={{ color: '#606060' }}>
+          Nenhuma chave API ativa. Clique em "Gerar Nova Chave" para criar.
+        </p>
       ) : (
-        <div className="space-y-2">
-          {keys.map((apiKey) => (
-            <div
-              key={apiKey.id}
-              className="flex items-center justify-between p-3 rounded-lg"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
-            >
-              <div className="flex items-center gap-3">
-                <Key className="w-4 h-4" style={{ color: '#00D4AA' }} />
-                <div>
-                  <p className="nex-mono text-xs" style={{ color: '#FFFFFF' }}>
-                    {apiKey.key_prefix}
-                  </p>
-                  <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-                    Criada: {new Date(apiKey.created_at).toLocaleDateString('pt-PT')}
-                    {apiKey.label && ` · ${apiKey.label}`}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {apiKey.last_used_at && (
-                  <span className="nex-mono text-[10px] hidden sm:inline" style={{ color: '#606060' }}>
-                    Último uso: {new Date(apiKey.last_used_at).toLocaleDateString('pt-PT')}
-                  </span>
-                )}
-                <span className={`status-dot ${apiKey.is_active ? 'active' : 'inactive'}`} />
-              </div>
+        <div
+          className="flex items-center justify-between p-4 rounded-lg"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}
+        >
+          <div className="flex items-center gap-3">
+            <Key className="w-4 h-4" style={{ color: '#00D4AA' }} />
+            <div>
+              <p className="nex-mono text-xs" style={{ color: '#FFFFFF' }}>
+                {maskKey(currentKey.apiKey)}
+              </p>
+              {currentKey.storeName && (
+                <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>
+                  Loja: {currentKey.storeName}
+                </p>
+              )}
             </div>
-          ))}
+          </div>
+          <button
+            onClick={() => handleCopy(currentKey.apiKey)}
+            className="p-2 rounded hover:bg-white/5 transition-colors"
+            style={{ color: '#00D4AA' }}
+            title="Copiar chave"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
         </div>
       )}
     </div>
@@ -252,20 +241,18 @@ function WebhooksTab() {
             <input
               type="url"
               className="neon-input w-full rounded-lg px-4 py-3 text-sm nex-mono"
-              placeholder="https://seu-servidor.com/webhook/atlasgp"
+              placeholder="https://seu-servidor.com/webhook/atlas"
             />
           </div>
           <div className="space-y-2">
             <label className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>HMAC Secret</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className="neon-input flex-1 rounded-lg px-4 py-3 text-sm nex-mono"
-                placeholder="atlasgp_whsec_••••••••"
-                defaultValue=""
-                readOnly
-              />
-            </div>
+            <input
+              type="text"
+              className="neon-input w-full rounded-lg px-4 py-3 text-sm nex-mono"
+              placeholder="atlas_whsec_••••••••"
+              defaultValue=""
+              readOnly
+            />
           </div>
           <button className="neon-btn-primary px-4 py-2.5 rounded-lg text-sm">Guardar Configuração</button>
         </div>
@@ -291,8 +278,8 @@ function GettingStartedTab() {
   const steps = [
     { num: '01', title: 'Criar Chave API', desc: 'Gere uma chave API na secção "API Keys". Guarde a chave em segurança.' },
     { num: '02', title: 'Configurar Webhook', desc: 'Defina a URL do seu servidor para receber notificações em tempo real.' },
-    { num: '03', title: 'Testar no Sandbox', desc: 'Utilize o ambiente de testes para validar a sua integração antes de ir para produção.' },
-    { num: '04', title: 'Implementar Endpoints', desc: 'Integre os endpoints de pagamento, câmbio e levantamento na sua aplicação.' },
+    { num: '03', title: 'Testar no Sandbox', desc: 'Utilize o ambiente de testes para validar a sua integração.' },
+    { num: '04', title: 'Implementar Endpoints', desc: 'Integre os endpoints de pagamento, câmbio e levantamento.' },
     { num: '05', title: 'Go Live', desc: 'Após validação, ative a sua integração em produção.' },
   ];
 
@@ -333,17 +320,16 @@ function ApiReferenceTab() {
     { method: 'POST', path: '/swaps', desc: 'Executar câmbio', color: '#FFB800' },
     { method: 'POST', path: '/payouts', desc: 'Solicitar levantamento', color: '#FFB800' },
     { method: 'POST', path: '/deposits', desc: 'Criar depósito', color: '#00D4AA' },
-    { method: 'GET', path: '/api/internal/links', desc: 'Listar smart links', color: '#00B4D8' },
-    { method: 'POST', path: '/api/internal/links', desc: 'Criar smart link', color: '#00D4AA' },
-    { method: 'GET', path: '/api/internal/stores', desc: 'Config da loja', color: '#00B4D8' },
-    { method: 'GET', path: '/api/merchant/api-keys', desc: 'Listar chaves API', color: '#00B4D8' },
-    { method: 'POST', path: '/api/merchant/api-keys/generate', desc: 'Gerar chave API', color: '#00D4AA' },
-    { method: 'GET', path: '/api/public/rates', desc: 'Taxas de câmbio', color: '#00B4D8' },
-    { method: 'GET', path: '/ledger', desc: 'Consultar ledger', color: '#00B4D8' },
-    { method: 'GET', path: '/auth/me', desc: 'Obter perfil do utilizador', color: '#A855F7' },
+    { method: 'GET', path: '/internal/links', desc: 'Listar smart links', color: '#00B4D8' },
+    { method: 'POST', path: '/internal/links', desc: 'Criar smart link', color: '#00D4AA' },
+    { method: 'GET', path: '/internal/stores', desc: 'Config da loja', color: '#00B4D8' },
+    { method: 'GET', path: '/merchant/api-keys', desc: 'Obter chave API', color: '#00B4D8' },
+    { method: 'POST', path: '/merchant/api-keys/generate', desc: 'Gerar chave API', color: '#00D4AA' },
+    { method: 'GET', path: '/public/rates', desc: 'Taxas de câmbio', color: '#00B4D8' },
+    { method: 'GET', path: '/auth/me', desc: 'Perfil do utilizador', color: '#A855F7' },
     ...(admin ? [
       { method: 'GET', path: '/admin/users', desc: 'Listar utilizadores (Admin)', color: '#FFB800' },
-      { method: 'GET', path: '/admin/tickets', desc: 'Listar tickets de aprovação (Admin)', color: '#FFB800' },
+      { method: 'GET', path: '/admin/tickets', desc: 'Tickets de aprovação (Admin)', color: '#FFB800' },
     ] : []),
   ];
 

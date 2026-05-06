@@ -62,7 +62,7 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   MOCK DATA — used when hooks return empty (DEV_MOCK mode)
+   PLACEHOLDER DATA — used when hooks return empty
    ═══════════════════════════════════════════════════════════ */
 
 const MOCK_STORE: StoreCheckout = {

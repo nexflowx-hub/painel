@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { useAuthStore, IS_DEV_MOCK } from '@/lib/auth-store';
+import { useAuthStore } from '@/lib/auth-store';
 import { useDashboardStore } from '@/lib/dashboard-store';
 import type { DashboardSection } from '@/lib/rbac';
 import { useIsMobile } from '@/hooks/use-mobile';

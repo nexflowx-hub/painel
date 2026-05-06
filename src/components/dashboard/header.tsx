@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useDashboardStore } from '@/lib/dashboard-store';
 import type { DashboardSection } from '@/lib/rbac';
-import { useAuthStore, getUserRole, IS_DEV_MOCK } from '@/lib/auth-store';
+import { useAuthStore, getUserRole } from '@/lib/auth-store';
 import { ROLE_CONFIG, TIER_CONFIG } from '@/lib/rbac';
 import type { TierLevel } from '@/types/atlas';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Search, Bell, Crown, Shield, User, CircleDot, Terminal, Menu, ShieldCheck } from 'lucide-react';
+import { Search, Bell, Crown, Shield, User, CircleDot, Menu, ShieldCheck } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import { LanguageSelector } from './language-selector';
 import type { AtlasRole } from '@/types/atlas';
@@ -46,7 +46,7 @@ const roleIcons: Record<AtlasRole, React.ElementType> = {
 
 export default function Header() {
   const { activeSection, setSidebarOpen } = useDashboardStore();
-  const { user, isDevMode } = useAuthStore();
+  const { user } = useAuthStore();
   const isMobile = useIsMobile();
   const [time, setTime] = useState('');
   const [date, setDate] = useState('');
@@ -156,14 +156,6 @@ export default function Header() {
           <div className={`neon-badge ${tierCfg.badgeClass} hidden sm:flex items-center gap-1`}>
             <ShieldCheck className="w-3 h-3" />
             {tierCfg.label}
-          </div>
-        )}
-
-        {/* DEV badge */}
-        {IS_DEV_MOCK && isDevMode && (
-          <div className="dev-badge hidden md:block">
-            <Terminal className="w-3 h-3" />
-            DEV
           </div>
         )}
 

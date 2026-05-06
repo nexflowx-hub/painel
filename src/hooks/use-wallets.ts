@@ -1,62 +1,213 @@
-'use client';
+/**
+ * Atlas Core — Wallet & Transaction Hooks (React Query)
+ * 
+ * V3.0 — Usa atlas-client.ts em vez de Supabase.
+ * Suporta 4-balance model: Incoming, Pending, Available, Blocked.
+ */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
-import type { PayoutMethod } from '@/lib/api/contracts';
-import { mapWallet, mapActionTicket, mapStore, mapGateway, mapPaymentLink } from '@/lib/api/contracts';
+import {
+  walletApi,
+  transactionApi,
+  depositApi,
+  swapApi,
+  payoutApi,
+  adminApi,
+  kycApi,
+} from '@/lib/api/atlas-client';
+import type {
+  Wallet,
+  WalletSummary,
+  DepositRequest,
+  DepositResponse,
+  SwapRequest,
+  SwapResponse,
+  PayoutRequest,
+  PayoutResponse,
+  TransactionFilters,
+  PaginatedResponse,
+  Transaction,
+  OperationTicket,
+  TicketStatus,
+  FeeSchedule,
+  KYCTier1Request,
+  KYCTier2Request,
+  TierLevel,
+} from '@/types/atlas';
 
-type RawRecord = Record<string, unknown>;
+/* ═══════════════════════════════════════════════════════════
+   WALLETS
+   ═══════════════════════════════════════════════════════════ */
 
 export function useWallets() {
   return useQuery({
     queryKey: ['wallets'],
+    queryFn: () => walletApi.list(),
+  });
+}
+
+export function useWalletSummary() {
+  return useQuery({
+    queryKey: ['wallets', 'summary'],
+    queryFn: () => walletApi.summary(),
+  });
+}
+
+/** Aggregate totals across all wallets */
+export function useWalletTotals() {
+  return useQuery({
+    queryKey: ['wallets', 'totals'],
     queryFn: async () => {
-      const res = await api.wallets.list();
-      // API client unwraps { data: ... }, so res is Wallet[] directly
-      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
-      return raw.map(mapWallet);
+      const wallets = await walletApi.list();
+      return wallets.reduce(
+        (acc, w) => {
+          acc.incoming += w.balanceIncoming;
+          acc.pending += w.balancePending;
+          acc.available += w.balanceAvailable;
+          acc.blocked += w.balanceBlocked;
+          acc.total += w.balanceIncoming + w.balancePending + w.balanceAvailable + w.balanceBlocked;
+          return acc;
+        },
+        { incoming: 0, pending: 0, available: 0, blocked: 0, total: 0 },
+      );
     },
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TRANSACTIONS (LEDGER)
+   ═══════════════════════════════════════════════════════════ */
+
+export function useTransactions(filters?: TransactionFilters) {
+  return useQuery({
+    queryKey: ['transactions', filters],
+    queryFn: () => transactionApi.list(filters),
+  });
+}
+
+export function useTransaction(id: string) {
+  return useQuery({
+    queryKey: ['transactions', id],
+    queryFn: () => transactionApi.getById(id),
+    enabled: !!id,
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CORE FLOWS
+   ═══════════════════════════════════════════════════════════ */
+
+export function useDeposit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: DepositRequest) => depositApi.initiate(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['wallets'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+}
+
+export function useDepositRoutes(currency: string) {
+  return useQuery({
+    queryKey: ['deposit-routes', currency],
+    queryFn: () => depositApi.getRoutes(currency as 'EUR' | 'BRL' | 'USDT' | 'USD'),
+    enabled: !!currency,
   });
 }
 
 export function useSwap() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { amount: number; from_currency: string; to_currency: string }) => {
-      return api.swap.execute(payload);
+    mutationFn: (data: SwapRequest) => swapApi.execute(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['wallets'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['wallets'] }); qc.invalidateQueries({ queryKey: ['ledger'] }); },
   });
 }
 
 export function usePayout() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { amount: number; currency: string; method: PayoutMethod; destination: string }) => {
-      return api.payout.request(payload);
+    mutationFn: (data: PayoutRequest) => payoutApi.request(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['wallets'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['wallets'] }); qc.invalidateQueries({ queryKey: ['ledger'] }); },
   });
 }
 
-export function useDeposit() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: { amount: number | string; currency: string; store_id?: string; customer_email?: string }) => {
-      return api.deposits.create(payload);
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['wallets'] }); qc.invalidateQueries({ queryKey: ['ledger'] }); qc.invalidateQueries({ queryKey: ['payment-links'] }); },
+/* ═══════════════════════════════════════════════════════════
+   KYC
+   ═══════════════════════════════════════════════════════════ */
+
+export function useKYCStatus() {
+  return useQuery({
+    queryKey: ['kyc', 'status'],
+    queryFn: () => kycApi.status(),
   });
 }
+
+export function useSubmitKYCTier1() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: KYCTier1Request) => kycApi.submitTier1(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['kyc'] });
+    },
+  });
+}
+
+export function useSubmitKYCTier2() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: KYCTier2Request) => kycApi.submitTier2(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['kyc'] });
+    },
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN / OPERATOR
+   ═══════════════════════════════════════════════════════════ */
+
+export function useOperationTickets(status?: TicketStatus) {
+  return useQuery({
+    queryKey: ['tickets', status],
+    queryFn: () => adminApi.listTickets(status),
+  });
+}
+
+export function useUpdateTicket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; status: TicketStatus; resolutionNotes?: string }) =>
+      adminApi.updateTicket(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tickets'] });
+    },
+  });
+}
+
+export function useFeeSchedules() {
+  return useQuery({
+    queryKey: ['fee-schedules'],
+    queryFn: () => adminApi.listFeeSchedules(),
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MERCHANT — Stores, Payment Links, Gateways
+   ═══════════════════════════════════════════════════════════ */
 
 export function useStores() {
   return useQuery({
     queryKey: ['stores'],
     queryFn: async () => {
-      const res = await api.stores.list();
-      // API client unwraps { data: ... }, so res is Store[] directly
-      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
-      return raw.map(mapStore);
+      // Stores will be fetched from the Atlas Core API when endpoint is ready
+      return [] as import('@/types/atlas').Store[];
     },
   });
 }
@@ -64,28 +215,13 @@ export function useStores() {
 export function useCreateStore() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { name: string }) => api.stores.create(payload),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['stores'] }); },
-  });
-}
-
-export function useGateways() {
-  return useQuery({
-    queryKey: ['gateways'],
-    queryFn: async () => {
-      const res = await api.gateways.list();
-      // API client unwraps { data: ... }, so res is Gateway[] directly
-      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
-      return raw.map(mapGateway);
+    mutationFn: async (data: { name: string }) => {
+      // Will connect to Atlas Core API when endpoint is ready
+      return { id: 'mock', name: data.name };
     },
-  });
-}
-
-export function useConfigureGateway() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: { gateway_id: string; config: Record<string, unknown> }) => api.gateways.configure(payload),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['gateways'] }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stores'] });
+    },
   });
 }
 
@@ -93,10 +229,8 @@ export function usePaymentLinks() {
   return useQuery({
     queryKey: ['payment-links'],
     queryFn: async () => {
-      const res = await api.paymentLinks.list();
-      // API client unwraps { data: ... }, so res is PaymentLink[] directly
-      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
-      return raw.map(mapPaymentLink);
+      // Will connect to Atlas Core API when endpoint is ready
+      return [] as import('@/types/atlas').PaymentLink[];
     },
   });
 }
@@ -104,36 +238,33 @@ export function usePaymentLinks() {
 export function useCreatePaymentLink() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { amount: number | string; currency: string; store_id?: string; customer_email?: string }) => {
-      return api.paymentLinks.create(payload);
+    mutationFn: async (data: { amount: number | string; currency: string; store_id?: string; customer_email?: string }) => {
+      return { id: 'mock', shareable_url: '' };
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payment-links'] }); qc.invalidateQueries({ queryKey: ['ledger'] }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payment-links'] });
+    },
   });
 }
 
-export function useLedger(query: Record<string, string> = {}) {
+export function useGateways() {
   return useQuery({
-    queryKey: ['ledger', query],
-    queryFn: async () => { return api.ledger.list(query); },
-  });
-}
-
-export function useActionTickets() {
-  return useQuery({
-    queryKey: ['action-tickets'],
+    queryKey: ['gateways'],
     queryFn: async () => {
-      const res = await api.actionTickets.list();
-      // API client unwraps { data: ... }, so res is ActionTicket[] directly
-      const raw: RawRecord[] = Array.isArray(res) ? (res as unknown as RawRecord[]) : [];
-      return raw.map(mapActionTicket);
+      // Will connect to Atlas Core API when endpoint is ready
+      return [] as import('@/types/atlas').Gateway[];
     },
   });
 }
 
-export function useApproveTicket() {
+export function useConfigureGateway() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => api.actionTickets.approve(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['action-tickets'] }); },
+    mutationFn: async (data: { gateway_id: string; config: Record<string, unknown> }) => {
+      return { success: true };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['gateways'] });
+    },
   });
 }

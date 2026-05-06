@@ -17,14 +17,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Atlas Global Payments — Orquestração Financeira",
-    template: "%s | Atlas GP",
+    default: "Atlas Core — Core Banking Engine",
+    template: "%s | Atlas Core",
   },
-  description: "Plataforma de orquestração financeira B2B2C. Non-custodial payment routing, gestão de tesouraria, câmbio FX e liquidação global em tempo real.",
+  description: "Atlas Core Banking — Centro de Comando Fintech Institucional & Web3. Wallet multi-moeda, settlement engine, câmbio FX, KYC progressivo e liquidação global em tempo real.",
   keywords: ["fintech", "payments", "forex", "treasury", "B2B", "financial", "crypto", "banking"],
   authors: [{ name: "NeXFlowX" }],
   creator: "NeXFlowX",
-  publisher: "Atlas Global Payments",
+  publisher: "NeXFlowX Technologies",
   icons: {
     icon: [
       { url: "/logo-circular.png", sizes: "192x192", type: "image/png" },
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Atlas GP",
+    title: "Atlas Core",
   },
   formatDetection: {
     telephone: true,
@@ -49,9 +49,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "Atlas Global Payments",
-    title: "Atlas Global Payments — Orquestração Financeira",
-    description: "Plataforma de orquestração financeira B2B2C",
+    siteName: "Atlas Core Banking",
+    title: "Atlas Core — Core Banking Engine",
+    description: "Centro de Comando Fintech Institucional & Web3",
     images: [
       {
         url: "/logo-circular-lg.png",
@@ -63,11 +63,11 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Atlas Global Payments",
-    description: "Plataforma de orquestração financeira B2B2C",
+    title: "Atlas Core Banking",
+    description: "Centro de Comando Fintech Institucional & Web3",
     images: ["/logo-circular-lg.png"],
   },
-  applicationName: "Atlas GP",
+  applicationName: "Atlas Core",
   referrer: "origin-when-cross-origin",
   robots: {
     index: true,

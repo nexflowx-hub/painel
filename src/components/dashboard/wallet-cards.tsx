@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useWallets, usePayout } from '@/hooks/use-wallets';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useWallets, useWalletTotals } from '@/hooks/use-wallets';
 import { useDashboardStore } from '@/lib/dashboard-store';
+import { payoutApi } from '@/lib/api/atlas-client';
+import type { Wallet, Currency, WalletSummary, PayoutRequest } from '@/types/atlas';
 import {
   TrendingDown, Clock, Wallet,
   ArrowUpRight, ArrowLeftRight, Download,
-  CircleDollarSign, AlertTriangle,
+  CircleDollarSign, AlertTriangle, ShieldBan,
 } from 'lucide-react';
-import type { Wallet as WalletType } from '@/lib/api/contracts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,8 +18,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 /* ─── Base Currencies for Reference ─── */
-const BASE_CURRENCIES = ['EUR', 'USDT', 'USD', 'BRL'] as const;
-type BaseCurrency = typeof BASE_CURRENCIES[number];
+const BASE_CURRENCIES: Currency[] = ['EUR', 'USDT', 'USD', 'BRL'];
 
 /* ─── Formatters ─── */
 function fmt(n: number, code: string) {
@@ -155,15 +156,23 @@ function PayoutDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  wallets: WalletType[];
+  wallets: Wallet[];
 }) {
-  const payoutMutation = usePayout();
+  const qc = useQueryClient();
   const [method, setMethod] = useState<'CRYPTO' | 'IBAN' | 'PIX' | 'SEPA' | 'BANK'>('IBAN');
   const [amount, setAmount] = useState('');
   const [destination, setDestination] = useState('');
 
-  const availableWallets = wallets.filter((w) => w.balance_available > 0);
+  const availableWallets = wallets.filter((w) => w.balanceAvailable > 0);
   const selectedWallet = availableWallets[0];
+
+  const payoutMutation = useMutation({
+    mutationFn: (data: PayoutRequest) => payoutApi.request(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['wallets'] });
+      qc.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
 
   const methods = [
     { id: 'IBAN' as const, label: 'IBAN', desc: 'Transferência SEPA' },
@@ -179,7 +188,7 @@ function PayoutDialog({
     try {
       await payoutMutation.mutateAsync({
         amount: Number(amount),
-        currency: selectedWallet.currency_code,
+        currency: selectedWallet.currency,
         method,
         destination,
       });
@@ -218,10 +227,10 @@ function PayoutDialog({
             </Label>
             <div className="mt-1.5 flex items-center gap-2 p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <span className="nex-mono text-sm font-semibold" style={{ color: '#00D4AA' }}>
-                {selectedWallet?.currency_code || 'EUR'}
+                {selectedWallet?.currency || 'EUR'}
               </span>
               <span className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-                Disponível: {selectedWallet ? fmt(selectedWallet.balance_available, selectedWallet.currency_code) : '€0.00'}
+                Disponível: {selectedWallet ? fmt(selectedWallet.balanceAvailable, selectedWallet.currency) : '€0.00'}
               </span>
             </div>
           </div>
@@ -313,14 +322,15 @@ function PayoutDialog({
 /* ─── Main Treasury Component ─── */
 export default function WalletCards() {
   const { data: wallets, isLoading } = useWallets();
+  const { data: totals } = useWalletTotals();
   const { setActiveSection } = useDashboardStore();
   const [payoutOpen, setPayoutOpen] = useState(false);
 
-  if (isLoading) {
+  if (isLoading || !totals) {
     return (
       <div className="space-y-6 animate-fade-up">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
             <div key={i} className="rounded-xl p-6" style={{ background: 'rgba(14,17,23,0.85)', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }} />
@@ -337,12 +347,12 @@ export default function WalletCards() {
     );
   }
 
-  const allWallets: WalletType[] = wallets ?? [];
+  const allWallets: Wallet[] = wallets ?? [];
 
   // Sort wallets to prioritize base currencies (EUR, USDT, USD, BRL)
   const sortedWallets = [...allWallets].sort((a, b) => {
-    const aIndex = BASE_CURRENCIES.indexOf(a.currency_code as BaseCurrency);
-    const bIndex = BASE_CURRENCIES.indexOf(b.currency_code as BaseCurrency);
+    const aIndex = BASE_CURRENCIES.indexOf(a.currency as Currency);
+    const bIndex = BASE_CURRENCIES.indexOf(b.currency as Currency);
     
     // If both are base currencies, sort by index
     if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
@@ -350,25 +360,13 @@ export default function WalletCards() {
     if (aIndex !== -1) return -1;
     if (bIndex !== -1) return 1;
     // Otherwise, sort alphabetically
-    return a.currency_code.localeCompare(b.currency_code);
+    return a.currency.localeCompare(b.currency);
   });
 
-  // Aggregate totals across all wallets
-  const totals = sortedWallets.reduce(
-    (acc, w) => {
-      acc.incoming += w.balance_incoming;
-      acc.pending += w.balance_pending;
-      acc.available += w.balance_available;
-      acc.total += w.balance_available + w.balance_pending + w.balance_incoming;
-      return acc;
-    },
-    { incoming: 0, pending: 0, available: 0, total: 0 }
-  );
-
   // Primary currency is EUR if available, otherwise first base currency available, or first wallet
-  const primaryCurrency = sortedWallets.find(w => w.currency_code === 'EUR')?.currency_code 
-    || sortedWallets.find(w => BASE_CURRENCIES.includes(w.currency_code as BaseCurrency))?.currency_code 
-    || (sortedWallets.length > 0 ? sortedWallets[0].currency_code : 'EUR');
+  const primaryCurrency = sortedWallets.find(w => w.currency === 'EUR')?.currency 
+    || sortedWallets.find(w => BASE_CURRENCIES.includes(w.currency as Currency))?.currency 
+    || (sortedWallets.length > 0 ? sortedWallets[0].currency : 'EUR');
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -392,8 +390,8 @@ export default function WalletCards() {
         </div>
       </div>
 
-      {/* 3-Stage Settlement Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* 4-Stage Settlement Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Card 1: Incoming */}
         <SettlementCard
           title="Entrada (Hoje)"
@@ -437,6 +435,33 @@ export default function WalletCards() {
               <ArrowUpRight className="w-3.5 h-3.5" />
               Solicitar Payout
             </button>
+          }
+          accentLine
+        />
+
+        {/* Card 4: Blocked */}
+        <SettlementCard
+          title="Bloqueado"
+          subtitle="Capital retido por compliance, disputas ou KYC pendente"
+          amount={fmt(totals.blocked, primaryCurrency)}
+          currency={primaryCurrency}
+          color="#EF4444"
+          icon={ShieldBan}
+          action={
+            totals.blocked > 0 ? (
+              <button
+                onClick={() => setActiveSection('activity')}
+                className="nex-mono text-[10px] uppercase tracking-wider font-semibold px-4 py-2 rounded-lg transition-all flex items-center gap-2"
+                style={{
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.2)',
+                  color: '#EF4444',
+                }}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Ver Detalhes
+              </button>
+            ) : undefined
           }
           accentLine
         />
@@ -513,8 +538,9 @@ export default function WalletCards() {
             <p className="col-span-2 nex-mono text-[9px] uppercase tracking-wider" style={{ color: '#606060' }}>Moeda</p>
             <p className="col-span-2 nex-mono text-[9px] uppercase tracking-wider text-right" style={{ color: '#606060' }}>Entrada</p>
             <p className="col-span-2 nex-mono text-[9px] uppercase tracking-wider text-right" style={{ color: '#606060' }}>Pendente</p>
-            <p className="col-span-3 nex-mono text-[9px] uppercase tracking-wider text-right" style={{ color: '#606060' }}>Disponível</p>
-            <p className="col-span-1 nex-mono text-[9px] uppercase tracking-wider text-right" style={{ color: '#606060' }}>Tipo</p>
+            <p className="col-span-2 nex-mono text-[9px] uppercase tracking-wider text-right" style={{ color: '#606060' }}>Disponível</p>
+            <p className="col-span-2 nex-mono text-[9px] uppercase tracking-wider text-right" style={{ color: '#606060' }}>Bloqueado</p>
+            <p className="col-span-2 nex-mono text-[9px] uppercase tracking-wider text-right" style={{ color: '#606060' }}>Referência</p>
           </div>
 
           {/* Wallet rows */}
@@ -528,38 +554,46 @@ export default function WalletCards() {
                 {/* Mobile view */}
                 <div className="md:hidden flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="nex-mono text-sm font-semibold" style={{ color: '#FFFFFF' }}>{w.currency_code}</span>
-                    <span className="neon-badge neon-badge-teal" style={{ fontSize: '9px' }}>{w.type}</span>
+                    <span className="nex-mono text-sm font-semibold" style={{ color: '#FFFFFF' }}>{w.currency}</span>
+                    <span className="neon-badge neon-badge-teal" style={{ fontSize: '9px' }}>{w.walletReference}</span>
                   </div>
-                  <span className="nex-mono text-sm font-bold" style={{ color: '#00D4AA' }}>
-                    {fmt(w.balance_available, w.currency_code)}
+                  <span className="nex-mono text-sm font-bold" style={{ color: '#00B4D8' }}>
+                    {fmt(w.balanceAvailable, w.currency)}
                   </span>
                 </div>
                 <div className="md:hidden flex items-center gap-3">
                   <span className="nex-mono text-[10px]" style={{ color: '#00D4AA' }}>
-                    ↗ {fmt(w.balance_incoming, w.currency_code)}
+                    ↗ {fmt(w.balanceIncoming, w.currency)}
                   </span>
                   <span className="nex-mono text-[10px]" style={{ color: '#FFB800' }}>
-                    ⏳ {fmt(w.balance_pending, w.currency_code)}
+                    ⏳ {fmt(w.balancePending, w.currency)}
                   </span>
+                  {w.balanceBlocked > 0 && (
+                    <span className="nex-mono text-[10px]" style={{ color: '#EF4444' }}>
+                      🔒 {fmt(w.balanceBlocked, w.currency)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Desktop view */}
                 <div className="hidden md:block col-span-2 nex-mono text-sm font-semibold" style={{ color: '#FFFFFF' }}>
-                  {w.currency_code}
+                  {w.currency}
                 </div>
                 <div className="hidden md:block col-span-2 nex-mono text-sm text-right" style={{ color: '#00D4AA' }}>
-                  {w.balance_incoming > 0 ? fmt(w.balance_incoming, w.currency_code) : '—'}
+                  {w.balanceIncoming > 0 ? fmt(w.balanceIncoming, w.currency) : '—'}
                 </div>
                 <div className="hidden md:block col-span-2 nex-mono text-sm text-right" style={{ color: '#FFB800' }}>
-                  {w.balance_pending > 0 ? fmt(w.balance_pending, w.currency_code) : '—'}
+                  {w.balancePending > 0 ? fmt(w.balancePending, w.currency) : '—'}
                 </div>
-                <div className="hidden md:block col-span-3 nex-mono text-sm text-right font-semibold" style={{ color: '#00B4D8' }}>
-                  {fmt(w.balance_available, w.currency_code)}
+                <div className="hidden md:block col-span-2 nex-mono text-sm text-right font-semibold" style={{ color: '#00B4D8' }}>
+                  {fmt(w.balanceAvailable, w.currency)}
                 </div>
-                <div className="hidden md:flex col-span-1 justify-end">
-                  <span className={`neon-badge ${w.type === 'merchant' ? 'neon-badge-teal' : w.type === 'treasury' ? 'neon-badge-amber' : w.type === 'fx_pool' ? 'neon-badge-cyan' : 'neon-badge-red'}`}>
-                    {w.type}
+                <div className="hidden md:block col-span-2 nex-mono text-sm text-right" style={{ color: w.balanceBlocked > 0 ? '#EF4444' : '#606060' }}>
+                  {w.balanceBlocked > 0 ? fmt(w.balanceBlocked, w.currency) : '—'}
+                </div>
+                <div className="hidden md:flex col-span-2 justify-end">
+                  <span className="nex-mono text-[10px]" style={{ color: '#A0A0A0' }}>
+                    {w.walletReference}
                   </span>
                 </div>
               </div>

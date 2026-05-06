@@ -4,8 +4,9 @@ import React, { useState, useEffect } from "react";
 import { ArrowDownUp, Settings2, Info, Loader2, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { swap } from "@/lib/api/client";
+import { swapApi } from "@/lib/api/atlas-client";
 import { useQueryClient } from "@tanstack/react-query";
+import type { SwapRequest, SwapResponse, Currency } from "@/types/atlas";
 
 const CURRENCIES = [
   { code: "EUR", name: "Euro", type: "fiat", icon: "🇪🇺" },
@@ -61,17 +62,19 @@ export default function SwapWidget() {
     setIsLoading(true);
     
     try {
-      // Chamar a API real
-      const result = await swap.execute({
-        from_currency: fromCurrency,
-        to_currency: toCurrency,
+      // Chamar a API real via atlas-client
+      const payload: SwapRequest = {
+        fromCurrency: fromCurrency as Currency,
+        toCurrency: toCurrency as Currency,
         amount: Number(fromAmount),
-      });
+      };
+
+      const result: SwapResponse = await swapApi.execute(payload);
 
       if (result.success) {
         toast({
           title: "Câmbio Realizado com Sucesso!",
-          description: `Convertido ${fromAmount} ${fromCurrency} → ${result.converted?.toFixed(6) || toAmount} ${toCurrency} via ${routePlan.name}`,
+          description: `Convertido ${result.from.amount} ${result.from.currency} → ${result.to.amount.toFixed(6)} ${result.to.currency} via ${routePlan.name}`,
           action: <CheckCircle className="w-5 h-5 text-green-500" />,
         });
         
@@ -80,7 +83,7 @@ export default function SwapWidget() {
         
         // Atualizar saldos (invalidar cache do React Query)
         await queryClient.invalidateQueries({ queryKey: ['wallets'] });
-        await queryClient.invalidateQueries({ queryKey: ['ledger'] });
+        await queryClient.invalidateQueries({ queryKey: ['transactions'] });
       } else {
         throw new Error("Swap falhou");
       }

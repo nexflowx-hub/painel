@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { useAuthStore } from '@/lib/auth-store';
-import { useDashboardStore, type DashboardSection } from '@/lib/dashboard-store';
+import { useAuthStore, IS_DEV_MOCK } from '@/lib/auth-store';
+import { useDashboardStore } from '@/lib/dashboard-store';
+import type { DashboardSection } from '@/lib/rbac';
 import { useIsMobile } from '@/hooks/use-mobile';
 import Sidebar from './sidebar';
 import Header from './header';
@@ -10,6 +11,7 @@ import LoginPage from './login-page';
 import { Logo3D } from '@/components/ui/logo-3d';
 import { AIChatWidget } from './ai-chat-widget';
 import Footer from './footer';
+import { Construction } from 'lucide-react';
 
 function useMounted() {
   const [mounted, setMounted] = useState(false);
@@ -64,6 +66,19 @@ function SectionLoading() {
   );
 }
 
+/* ─── Placeholder section for upcoming features ─── */
+function PlaceholderSection({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 animate-fade-up">
+      <div className="flex items-center justify-center w-16 h-16 rounded-2xl mb-6" style={{ background: 'rgba(0, 212, 170, 0.1)' }}>
+        <Construction className="w-8 h-8" style={{ color: '#00D4AA' }} />
+      </div>
+      <h2 className="text-xl font-semibold text-foreground mb-2">{title}</h2>
+      <p className="text-sm max-w-md text-center" style={{ color: '#606060' }}>{description}</p>
+    </div>
+  );
+}
+
 /* ─── Section router ─── */
 function SectionRenderer({ section }: { section: DashboardSection }) {
   switch (section) {
@@ -93,6 +108,27 @@ function SectionRenderer({ section }: { section: DashboardSection }) {
       return <SystemLiquidityPanel />;
     case 'developer':
       return <ApiManagement />;
+    case 'kyc':
+      return (
+        <PlaceholderSection
+          title="Verificação KYC"
+          description="Gestão de verificação de identidade e compliance. Esta secção estará disponível em breve."
+        />
+      );
+    case 'fee-schedule':
+      return (
+        <PlaceholderSection
+          title="Motor de Taxas"
+          description="Configuração e gestão de taxas e comissões. Esta secção estará disponível em breve."
+        />
+      );
+    case 'users':
+      return (
+        <PlaceholderSection
+          title="Utilizadores"
+          description="Gestão de utilizadores e permissões do sistema. Esta secção estará disponível em breve."
+        />
+      );
     default:
       return <DashboardOverview />;
   }

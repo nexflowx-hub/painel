@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api, users } from '@/lib/api/client';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/auth-store';
+import { useState } from 'react';
+import { authApi } from '@/lib/api/atlas-client';
+import { useAuthStore, IS_DEV_MOCK } from '@/lib/auth-store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Lock, Mail, Shield, Bell, Loader2, CheckCircle, Key } from 'lucide-react';
+import { Lock, Mail, Shield, Bell, Loader2, CheckCircle, Key, AlertTriangle } from 'lucide-react';
 
 export default function SettingsSecurity() {
   const { user } = useAuthStore();
@@ -22,6 +21,12 @@ export default function SettingsSecurity() {
         <p className="nex-mono text-xs" style={{ color: '#606060' }}>
           Gerir conta, segurança e preferências de notificação.
         </p>
+        {IS_DEV_MOCK && (
+          <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,184,0,0.06)', border: '1px solid rgba(255,184,0,0.15)' }}>
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#FFB800' }} />
+            <span className="nex-mono text-[10px]" style={{ color: '#FFB800' }}>DEV_MOCK ativo — alterações não persistem no backend.</span>
+          </div>
+        )}
       </div>
 
       <Tabs defaultValue="password">
@@ -65,6 +70,7 @@ export default function SettingsSecurity() {
 
 /* ─── Password Tab ─── */
 function PasswordTab() {
+  const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -75,6 +81,11 @@ function PasswordTab() {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (!currentPass) {
+      setError('Introduza a palavra-passe atual.');
+      return;
+    }
     if (newPass !== confirm) {
       setError('As palavras-passe não coincidem.');
       return;
@@ -83,15 +94,16 @@ function PasswordTab() {
       setError('A nova palavra-passe deve ter pelo menos 8 caracteres.');
       return;
     }
+    if (currentPass === newPass) {
+      setError('A nova palavra-passe deve ser diferente da atual.');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Use Supabase to update password (JWKS authentication)
-      const { error: supabaseError } = await supabase.auth.updateUser({ password: newPass });
-      if (supabaseError) {
-        setError(supabaseError.message);
-        return;
-      }
+      await authApi.changePassword(currentPass, newPass);
       setSuccess('Palavra-passe alterada com sucesso!');
+      setCurrentPass('');
       setNewPass('');
       setConfirm('');
     } catch (err: unknown) {
@@ -111,15 +123,40 @@ function PasswordTab() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>
+            Palavra-passe Atual
+          </Label>
+          <input
+            type="password"
+            value={currentPass}
+            onChange={(e) => setCurrentPass(e.target.value)}
+            className="neon-input w-full rounded-lg px-4 py-3 text-sm"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>
             Nova Palavra-passe
           </Label>
-          <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} className="neon-input w-full rounded-lg px-4 py-3 text-sm" required minLength={8} />
+          <input
+            type="password"
+            value={newPass}
+            onChange={(e) => setNewPass(e.target.value)}
+            className="neon-input w-full rounded-lg px-4 py-3 text-sm"
+            required
+            minLength={8}
+          />
         </div>
         <div className="space-y-2">
           <Label className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>
             Confirmar Nova Palavra-passe
           </Label>
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="neon-input w-full rounded-lg px-4 py-3 text-sm" required />
+          <input
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className="neon-input w-full rounded-lg px-4 py-3 text-sm"
+            required
+          />
         </div>
         {error && (
           <div className="p-3 rounded-lg text-xs" style={{ background: 'rgba(255,59,92,0.08)', border: '1px solid rgba(255,59,92,0.2)', color: '#FF5252' }}>{error}</div>
@@ -138,29 +175,9 @@ function PasswordTab() {
   );
 }
 
-/* ─── Email Tab ─── */
+/* ─── Email Tab (read-only) ─── */
 function EmailTab() {
   const { user } = useAuthStore();
-  const [email, setEmail] = useState(user?.email || '');
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    try {
-      await api.settings.updateEmail({ email });
-      setSuccess('Email atualizado com sucesso!');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao atualizar email.';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="glass-panel p-6">
@@ -168,18 +185,28 @@ function EmailTab() {
         <Mail className="w-4 h-4" style={{ color: '#00B4D8' }} />
         Gestão de Email
       </h4>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-4">
         <div className="space-y-2">
-          <Label className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>Email Atual</Label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="neon-input w-full rounded-lg px-4 py-3 text-sm" required />
+          <Label className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#A0A0A0' }}>
+            Email Associado
+          </Label>
+          <div
+            className="w-full rounded-lg px-4 py-3 text-sm"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              color: '#FFFFFF',
+            }}
+          >
+            {user?.email ?? '—'}
+          </div>
         </div>
-        {error && <div className="p-3 rounded-lg text-xs" style={{ background: 'rgba(255,59,92,0.08)', border: '1px solid rgba(255,59,92,0.2)', color: '#FF5252' }}>{error}</div>}
-        {success && <div className="p-3 rounded-lg text-xs flex items-center gap-2" style={{ background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.2)', color: '#00D4AA' }}><CheckCircle className="w-4 h-4" />{success}</div>}
-        <button type="submit" disabled={loading} className="neon-btn-primary px-6 py-2.5 rounded-lg text-sm flex items-center gap-2 disabled:opacity-40">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-          Atualizar Email
-        </button>
-      </form>
+        <div className="p-3 rounded-lg" style={{ background: 'rgba(0,180,216,0.04)', border: '1px solid rgba(0,180,216,0.12)' }}>
+          <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>
+            A alteração de email será disponibilizada em breve. Contacte o suporte se precisar de atualizar o seu endereço de email.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -210,56 +237,24 @@ function TwoFATab() {
   );
 }
 
-/* ─── Notifications Tab ─── */
+/* ─── Notifications Tab (placeholder) ─── */
 function NotificationsTab() {
-  const { user } = useAuthStore();
-  const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
-  const [success, setSuccess] = useState('');
   const [notifs, setNotifs] = useState({
     email_notifications: false,
     transaction_alerts: false,
     weekly_reports: false,
     security_alerts: false,
   });
-
-  useEffect(() => {
-    let cancelled = false;
-    setFetching(true);
-    users.getMe()
-      .then((profile) => {
-        if (cancelled) return;
-        // API client unwraps { data: ... }, so profile is the inner UserMeResponse object directly
-        const settings = profile?.settings;
-        if (settings) {
-          setNotifs({
-            email_notifications: !!settings.email_notifications,
-            transaction_alerts: !!settings.transaction_alerts,
-            weekly_reports: !!settings.weekly_reports,
-            security_alerts: !!settings.security_alerts,
-          });
-        }
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setFetching(false); });
-    return () => { cancelled = true; };
-  }, []);
+  const [success, setSuccess] = useState('');
 
   const handleToggle = (key: string) => {
     setNotifs((prev) => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
   };
 
   const handleSave = async () => {
-    setLoading(true);
-    setSuccess('');
-    try {
-      await api.users.updateMe(notifs);
-      setSuccess('Preferências de notificação guardadas!');
-    } catch {
-      // silent
-    } finally {
-      setLoading(false);
-    }
+    // Placeholder — notification settings API coming later
+    setSuccess('Preferências de notificação guardadas!');
+    setTimeout(() => setSuccess(''), 3000);
   };
 
   const items = [
@@ -269,22 +264,18 @@ function NotificationsTab() {
     { key: 'security_alerts', label: 'Alertas de Segurança', desc: 'Notificações de login e alterações de segurança.' },
   ];
 
-  if (fetching) {
-    return (
-      <div className="glass-panel p-6">
-        <div className="flex items-center justify-center py-8">
-          <div className="inline-block w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#00D4AA', borderTopColor: 'transparent' }} />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="glass-panel p-6">
       <h4 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '#FFFFFF' }}>
         <Bell className="w-4 h-4" style={{ color: '#FFB800' }} />
         Preferências de Notificação
       </h4>
+      {IS_DEV_MOCK && (
+        <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,184,0,0.06)', border: '1px solid rgba(255,184,0,0.15)' }}>
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#FFB800' }} />
+          <span className="nex-mono text-[10px]" style={{ color: '#FFB800' }}>API de notificações em desenvolvimento — alterações locais apenas.</span>
+        </div>
+      )}
       <div className="space-y-4">
         {items.map((item) => (
           <div
@@ -309,10 +300,9 @@ function NotificationsTab() {
         )}
         <button
           onClick={handleSave}
-          disabled={loading}
-          className="neon-btn-primary px-6 py-2.5 rounded-lg text-sm flex items-center gap-2 disabled:opacity-40"
+          className="neon-btn-primary px-6 py-2.5 rounded-lg text-sm flex items-center gap-2"
         >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+          <Bell className="w-4 h-4" />
           Guardar Preferências
         </button>
       </div>

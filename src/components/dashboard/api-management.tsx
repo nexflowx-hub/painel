@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api/client';
 import { useAuthStore, isAdmin, isCustomer } from '@/lib/auth-store';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -11,7 +10,15 @@ import {
   Code2, Key, Webhook, BookOpen, Lock, Plus, Eye, EyeOff, Copy,
   CheckCircle, Loader2, ExternalLink, Shield, ArrowRight,
 } from 'lucide-react';
-import type { ApiKey, CreateApiKeyResponse } from '@/lib/api/contracts';
+
+interface ApiKey {
+  id: string; key_hash: string; label?: string;
+  created_at: string; last_used_at?: string; is_active: boolean;
+}
+
+interface CreateApiKeyResponse {
+  key: string; key_hash: string; label?: string; created_at: string;
+}
 
 export default function ApiManagement() {
   const { user } = useAuthStore();
@@ -127,9 +134,10 @@ function ApiKeysTab() {
   const loadKeys = async () => {
     setLoading(true);
     try {
-      const res = await api.apiKeys.list();
-      // API client unwraps { data: ... }, so res is ApiKey[] directly
-      setKeys(Array.isArray(res) ? res : []);
+      const res = await fetch('/api/api-keys');
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json = await res.json();
+      setKeys(Array.isArray(json) ? json : json?.data ?? []);
     } catch {
       setKeys([]);
     } finally {
@@ -142,9 +150,16 @@ function ApiKeysTab() {
   const handleCreate = async () => {
     setCreating(true);
     try {
-      const res: CreateApiKeyResponse = await api.apiKeys.create('Atlas GP API Key');
-      if (res?.key) {
-        setNewKey(res.key);
+      const res = await fetch('/api/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: 'Atlas GP API Key' }),
+      });
+      if (!res.ok) throw new Error('Failed to create');
+      const json = await res.json();
+      const data: CreateApiKeyResponse = json?.data ?? json;
+      if (data?.key) {
+        setNewKey(data.key);
         loadKeys();
       }
     } catch {

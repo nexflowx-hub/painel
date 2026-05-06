@@ -2,12 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useDashboardStore, type DashboardSection } from '@/lib/dashboard-store';
-import { useAuthStore, getUserRole, IS_DEV_MODE } from '@/lib/auth-store';
+import { useAuthStore, getUserRole, IS_DEV_MOCK } from '@/lib/auth-store';
+import { ROLE_CONFIG, TIER_CONFIG } from '@/lib/rbac';
+import type { TierLevel } from '@/types/atlas';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Search, Bell, Crown, Shield, User, CircleDot, Terminal, Menu } from 'lucide-react';
+import { Search, Bell, Crown, Shield, User, CircleDot, Terminal, Menu, ShieldCheck } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import { LanguageSelector } from './language-selector';
-import type { UserRole } from '@/lib/api/contracts';
+import type { AtlasRole } from '@/types/atlas';
+
+/* ═══════════════════════════════════════════════════════════
+   SECTION LABELS
+   ═══════════════════════════════════════════════════════════ */
 
 const sectionLabels: Record<DashboardSection, string> = {
   dashboard: 'Dashboard',
@@ -16,6 +22,7 @@ const sectionLabels: Record<DashboardSection, string> = {
   payouts: 'Levantamentos',
   activity: 'Transações',
   deposits: 'Depósitos',
+  kyc: 'Verificação KYC',
   stores: 'Lojas & Marcas',
   'payment-links': 'Links de Pagamento',
   gateways: 'Gateways & API',
@@ -23,12 +30,18 @@ const sectionLabels: Record<DashboardSection, string> = {
   settings: 'Definições',
   approvals: 'Aprovações',
   liquidity: 'Liquidez do Sistema',
+  'fee-schedule': 'Motor de Taxas',
+  users: 'Utilizadores',
 };
 
-const roleConfig: Record<UserRole, { label: string; icon: React.ElementType; color: string; badgeClass: string }> = {
-  admin: { label: 'ADMIN', icon: Crown, color: '#FFB800', badgeClass: 'neon-badge-amber' },
-  merchant: { label: 'MERCHANT', icon: Shield, color: '#00B4D8', badgeClass: 'neon-badge-cyan' },
-  customer: { label: 'CUSTOMER', icon: User, color: '#A855F7', badgeClass: 'neon-badge-purple' },
+/* ═══════════════════════════════════════════════════════════
+   ROLE ICONS (complements ROLE_CONFIG from @/lib/rbac)
+   ═══════════════════════════════════════════════════════════ */
+
+const roleIcons: Record<AtlasRole, React.ElementType> = {
+  admin: Crown,
+  merchant: Shield,
+  customer: User,
 };
 
 export default function Header() {
@@ -39,8 +52,11 @@ export default function Header() {
   const [date, setDate] = useState('');
 
   const role = getUserRole(user);
-  const cfg = roleConfig[role];
-  const RoleIcon = cfg.icon;
+  const roleCfg = ROLE_CONFIG[role];
+  const RoleIcon = roleIcons[role];
+
+  const tier = user?.tier;
+  const tierCfg = tier ? TIER_CONFIG[tier] : null;
 
   useEffect(() => {
     const tick = () => {
@@ -130,13 +146,21 @@ export default function Header() {
         </div>
 
         {/* Role badge (hidden on mobile) */}
-        <div className={`neon-badge ${cfg.badgeClass} hidden sm:flex items-center gap-1`}>
+        <div className={`neon-badge ${roleCfg.badgeClass} hidden sm:flex items-center gap-1`}>
           <RoleIcon className="w-3 h-3" />
-          {cfg.label}
+          {roleCfg.label}
         </div>
 
+        {/* KYC Tier badge (hidden on mobile, shown if user has a tier) */}
+        {tierCfg && tierCfg.tierNum > 0 && (
+          <div className={`neon-badge ${tierCfg.badgeClass} hidden sm:flex items-center gap-1`}>
+            <ShieldCheck className="w-3 h-3" />
+            {tierCfg.label}
+          </div>
+        )}
+
         {/* DEV badge */}
-        {IS_DEV_MODE && isDevMode && (
+        {IS_DEV_MOCK && isDevMode && (
           <div className="dev-badge hidden md:block">
             <Terminal className="w-3 h-3" />
             DEV

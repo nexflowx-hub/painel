@@ -1,42 +1,34 @@
 'use client';
 
-import { useDashboardStore, type DashboardSection } from '@/lib/dashboard-store';
-import { useAuthStore, isAdmin } from '@/lib/auth-store';
+import { useDashboardStore } from '@/lib/dashboard-store';
+import { useAuthStore } from '@/lib/auth-store';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getSectionsByCategory, type DashboardSection } from '@/lib/rbac';
+import { getUserRole, IS_DEV_MOCK } from '@/lib/auth-store';
 import {
   LayoutDashboard, Landmark, ReceiptText,
   Store, Link2, Plug, Code2,
-  Settings, ShieldCheck, Droplets,
-  ChevronLeft, ChevronRight,
+  Settings, ClipboardList, Droplets, Percent, Users,
+  ChevronLeft, ChevronRight, ShieldCheck,
+  ArrowLeftRight, Banknote, Download,
 } from 'lucide-react';
 import { Logo3D } from '@/components/ui/logo-3d';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { Terminal } from 'lucide-react';
 
-interface NavItem {
-  id: DashboardSection;
-  label: string;
-  icon: React.ElementType;
-  adminOnly?: boolean;
-}
+/** Map icon names to components */
+const iconMap: Record<string, React.ElementType> = {
+  LayoutDashboard, Landmark, ReceiptText, Store, Link2, Plug, Code2,
+  Settings, ClipboardList, Droplets, Percent, Users,
+  ShieldCheck, ArrowLeftRight, Banknote, Download,
+};
 
-const navItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'wallets', label: 'Tesouraria / Wallets', icon: Landmark },
-  { id: 'activity', label: 'Transações', icon: ReceiptText },
-  { id: 'stores', label: 'Lojas & Marcas', icon: Store },
-  { id: 'payment-links', label: 'Links de Pagamento', icon: Link2 },
-  { id: 'gateways', label: 'Gateways & API', icon: Plug },
-];
-
-const adminItems: NavItem[] = [
-  { id: 'approvals', label: 'Aprovações', icon: ShieldCheck, adminOnly: true },
-  { id: 'liquidity', label: 'Liquidez do Sistema', icon: Droplets, adminOnly: true },
-];
-
-const systemItems: NavItem[] = [
-  { id: 'developer', label: 'Developer / API', icon: Code2 },
-  { id: 'settings', label: 'Definições', icon: Settings },
-];
+const categoryLabels: Record<string, string> = {
+  operation: 'Operação',
+  merchant: 'Merchant',
+  administration: 'Administração',
+  system: 'Sistema',
+};
 
 /* ─── Shared nav list ─── */
 function SidebarNav({
@@ -49,47 +41,23 @@ function SidebarNav({
   onNavigate: (id: DashboardSection) => void;
 }) {
   const { user } = useAuthStore();
-  const admin = isAdmin(user);
+  const role = getUserRole(user);
+
+  const categories = ['operation', 'merchant', 'administration', 'system'] as const;
 
   return (
     <nav className="flex-1 overflow-y-auto cyber-scrollbar py-3 px-2">
-      <div className="nex-mono text-[9px] uppercase tracking-widest px-3 py-2" style={{ color: '#606060' }}>
-        {sidebarCollapsed ? '···' : 'Operação'}
-      </div>
-      {navItems.map((item) => {
-        const Icon = item.icon;
-        const isActive = activeSection === item.id;
-        return (
-          <button
-            key={item.id}
-            onClick={() => onNavigate(item.id)}
-            className={`neon-sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm transition-all ${
-              isActive ? 'active' : ''
-            } ${sidebarCollapsed ? 'justify-center' : ''}`}
-            title={sidebarCollapsed ? item.label : undefined}
-          >
-            <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-            {!sidebarCollapsed && <span>{item.label}</span>}
-            {isActive && !sidebarCollapsed && (
-              <div
-                className="ml-auto w-1.5 h-1.5 rounded-full"
-                style={{ background: '#00D4AA', boxShadow: '0 0 8px rgba(0,212,170,0.5)' }}
-              />
-            )}
-          </button>
-        );
-      })}
+      {categories.map((cat) => {
+        const sections = getSectionsByCategory(role, cat);
+        if (sections.length === 0) return null;
 
-      {/* Admin Section */}
-      {admin && (
-        <>
-          <div className="nex-mono text-[9px] uppercase tracking-widest px-3 py-2 mt-4" style={{ color: '#606060' }}>
-            {sidebarCollapsed ? '···' : 'Administração'}
-          </div>
-          {adminItems
-            .filter((item) => !item.adminOnly || admin)
-            .map((item) => {
-              const Icon = item.icon;
+        return (
+          <div key={cat}>
+            <div className="nex-mono text-[9px] uppercase tracking-widest px-3 py-2" style={{ color: '#606060' }}>
+              {sidebarCollapsed ? '···' : categoryLabels[cat]}
+            </div>
+            {sections.map((item) => {
+              const Icon = iconMap[item.icon || 'LayoutDashboard'] || LayoutDashboard;
               const isActive = activeSection === item.id;
               return (
                 <button
@@ -111,34 +79,7 @@ function SidebarNav({
                 </button>
               );
             })}
-        </>
-      )}
-
-      {/* System */}
-      <div className="nex-mono text-[9px] uppercase tracking-widest px-3 py-2 mt-4" style={{ color: '#606060' }}>
-        {sidebarCollapsed ? '···' : 'Sistema'}
-      </div>
-      {systemItems.map((item) => {
-        const Icon = item.icon;
-        const isActive = activeSection === item.id;
-        return (
-          <button
-            key={item.id}
-            onClick={() => onNavigate(item.id)}
-            className={`neon-sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-r-lg text-sm transition-all ${
-              isActive ? 'active' : ''
-            } ${sidebarCollapsed ? 'justify-center' : ''}`}
-            title={sidebarCollapsed ? item.label : undefined}
-          >
-            <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-            {!sidebarCollapsed && <span>{item.label}</span>}
-            {isActive && !sidebarCollapsed && (
-              <div
-                className="ml-auto w-1.5 h-1.5 rounded-full"
-                style={{ background: '#00D4AA', boxShadow: '0 0 8px rgba(0,212,170,0.5)' }}
-              />
-            )}
-          </button>
+          </div>
         );
       })}
     </nav>
@@ -161,10 +102,10 @@ function DesktopSidebar() {
         {!sidebarCollapsed && (
           <div className="overflow-hidden">
             <h1 className="text-base font-bold tracking-tight whitespace-nowrap">
-              <span className="text-[#FFFFFF]">Atlas</span>{' '}<span style={{ color: '#00D4AA' }}>GP</span>
+              <span className="text-[#FFFFFF]">Atlas</span>{' '}<span style={{ color: '#00D4AA' }}>Core</span>
             </h1>
             <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-              Atlas Global Payments v1.01
+              Core Banking Engine v3.0
             </p>
           </div>
         )}
@@ -211,25 +152,18 @@ function MobileSidebar() {
         style={{ background: '#0F1117', borderRight: '1px solid rgba(255,255,255,0.06)' }}
       >
         <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
-        {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
           <Logo3D size="sm" spin showRing={false} />
           <div className="overflow-hidden">
             <h1 className="text-base font-bold tracking-tight whitespace-nowrap">
-              <span className="text-[#FFFFFF]">Atlas</span>{' '}<span style={{ color: '#00D4AA' }}>GP</span>
+              <span className="text-[#FFFFFF]">Atlas</span>{' '}<span style={{ color: '#00D4AA' }}>Core</span>
             </h1>
             <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-              Atlas Global Payments v1.01
+              Core Banking Engine v3.0
             </p>
           </div>
         </div>
-
-        {/* Navigation */}
-        <SidebarNav
-          activeSection={activeSection}
-          sidebarCollapsed={false}
-          onNavigate={handleNavigate}
-        />
+        <SidebarNav activeSection={activeSection} sidebarCollapsed={false} onNavigate={handleNavigate} />
       </SheetContent>
     </Sheet>
   );
@@ -238,7 +172,6 @@ function MobileSidebar() {
 /* ─── Main export ─── */
 export default function Sidebar() {
   const isMobile = useIsMobile();
-
   return (
     <>
       <DesktopSidebar />

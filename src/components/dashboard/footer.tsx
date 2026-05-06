@@ -1,7 +1,7 @@
 'use client'
 
 import { Logo3D } from '@/components/ui/logo-3d'
-import { useAuthStore, getUserRole, IS_DEV_MODE } from '@/lib/auth-store'
+import { useAuthStore, getUserRole, IS_DEV_MOCK } from '@/lib/auth-store'
 import { useI18n } from '@/lib/i18n'
 import { LogOut, Terminal, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
@@ -55,10 +55,10 @@ export default function Footer() {
           <Logo3D size="footer" spin={false} showRing={false} />
           <div className="flex flex-col">
             <span className="nex-mono text-[10px]" style={{ color: 'var(--muted-foreground)' }}>
-              © 2026 Atlas Global Payments
+              © 2026 Atlas Core Banking
             </span>
             <span className="nex-mono text-[9px]" style={{ color: 'var(--muted-foreground)' }}>
-              IAHUB360 LTD · UK Reg. 16626733
+              NeXFlowX Technologies
             </span>
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function Footer() {
               {user.username} · <span className="uppercase">{role}</span>
             </span>
           )}
-          {IS_DEV_MODE && isDevMode && (
+          {IS_DEV_MOCK && isDevMode && (
             <div className="dev-badge hidden md:flex items-center gap-1 px-2 py-1 rounded text-[9px]" style={{ background: 'rgba(255,184,0,0.1)', color: '#FFB800' }}>
               <Terminal className="w-3 h-3" />
               DEV

@@ -1,16 +1,18 @@
 'use client';
 
-import { useWallets, useLedger } from '@/hooks/use-wallets';
+import { useWallets, useWalletTotals, useTransactions } from '@/hooks/use-wallets';
 import { useDashboardStore } from '@/lib/dashboard-store';
+import { TIER_CONFIG } from '@/lib/rbac';
+import { IS_DEV_MOCK } from '@/lib/auth-store';
 import {
   TrendingDown, Clock, Wallet, Landmark,
   ArrowUpRight, Download, ArrowLeftRight,
-  Banknote, Activity, CircleDollarSign,
+  Banknote, Activity, ShieldAlert,
 } from 'lucide-react';
 import WorldMapNetwork from './world-map-network';
 import TradingViewTicker from './tradingview-ticker';
 import PartnersMarquee from './partners-marquee';
-import type { Wallet as WalletType, LedgerEntry } from '@/lib/api/contracts';
+import type { Wallet as WalletType, Transaction, WalletSummary } from '@/types/atlas';
 
 /* ─── Helpers ─── */
 function fmt(n: number, currency: string) {
@@ -21,6 +23,11 @@ function fmtCompact(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toFixed(2);
+}
+
+/** Derive CREDIT / DEBIT from TransactionType */
+function isCreditType(type: string): boolean {
+  return type === 'PROXY_INCOMING' || type === 'SETTLEMENT';
 }
 
 /* ─── KPI Card ─── */
@@ -85,57 +92,63 @@ function QuickAction({
   );
 }
 
-/* ─── Status dot for ledger ─── */
-function LedgerStatusDot({ status }: { status: string }) {
+/* ─── Status dot for transactions ─── */
+function TransactionStatusDot({ status }: { status: string }) {
   const cls =
-    status === 'cleared' ? 'active' :
-    status === 'failed' ? 'error' : 'warning';
+    status === 'COMPLETED' ? 'active' :
+    status === 'FAILED' || status === 'BLOCKED' ? 'error' : 'warning';
   return <span className={`status-dot ${cls}`} />;
 }
 
 /* ─── Type Badge ─── */
 function TypeBadge({ type }: { type: string }) {
   const map: Record<string, string> = {
-    PAYIN: 'neon-badge-teal',
+    PROXY_INCOMING: 'neon-badge-teal',
+    SETTLEMENT: 'neon-badge-teal',
     SWAP: 'neon-badge-cyan',
     PAYOUT: 'neon-badge-amber',
     FEE: 'neon-badge-red',
-    REFUND: 'neon-badge-purple',
+    TRANSFER: 'neon-badge-purple',
   };
   return <span className={`neon-badge ${map[type] || 'neon-badge-teal'}`}>{type}</span>;
+}
+
+/* ─── DEV_MOCK Badge ─── */
+function DevMockBadge() {
+  return (
+    <span
+      className="nex-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-md inline-flex items-center gap-1.5"
+      style={{
+        background: 'rgba(255, 184, 0, 0.10)',
+        border: '1px solid rgba(255, 184, 0, 0.25)',
+        color: '#FFB800',
+      }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#FFB800' }} />
+      DEV_MOCK
+    </span>
+  );
 }
 
 /* ─── Main Component ─── */
 export default function DashboardOverview() {
   const { setActiveSection } = useDashboardStore();
   const walletsQuery = useWallets();
-  const ledgerQuery = useLedger();
+  const totalsQuery = useWalletTotals();
+  const transactionsQuery = useTransactions({ limit: 8 });
 
   const wallets: WalletType[] = walletsQuery.data ?? [];
-  const ledgerEntries: LedgerEntry[] = ledgerQuery.data?.data ?? [];
+  const totals = totalsQuery.data ?? { incoming: 0, pending: 0, available: 0, blocked: 0, total: 0 };
+  const transactions: Transaction[] = transactionsQuery.data?.data ?? [];
 
-  // Aggregate 3-stage settlement totals
-  const totals = wallets.reduce(
-    (acc, w) => {
-      acc.incoming += w.balance_incoming;
-      acc.pending += w.balance_pending;
-      acc.available += w.balance_available;
-      acc.total += w.balance_available + w.balance_pending + w.balance_incoming;
-      return acc;
-    },
-    { incoming: 0, pending: 0, available: 0, total: 0 }
-  );
-
-  const primaryCurrency = wallets.length > 0 ? wallets[0].currency_code : 'EUR';
-
-  const recentEntries = ledgerEntries.slice(0, 8);
+  const primaryCurrency = wallets.length > 0 ? wallets[0].currency : 'EUR';
 
   return (
     <div className="space-y-6 animate-fade-up">
       {/* TradingView Ticker Tape */}
-      <div 
+      <div
         className="rounded-xl overflow-hidden"
-        style={{ 
+        style={{
           background: 'rgba(10, 13, 20, 0.6)',
           border: '1px solid rgba(0, 212, 170, 0.08)',
         }}
@@ -143,8 +156,15 @@ export default function DashboardOverview() {
         <TradingViewTicker />
       </div>
 
-      {/* KPI Cards — 3-Stage Settlement Pipeline */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Header row with DEV_MOCK badge */}
+      {IS_DEV_MOCK && (
+        <div className="flex items-center justify-between">
+          <DevMockBadge />
+        </div>
+      )}
+
+      {/* KPI Cards — 4-Balance Pipeline: Incoming, Pending, Available, Blocked */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Entrada (Hoje)"
           value={fmt(totals.incoming, primaryCurrency)}
@@ -165,6 +185,13 @@ export default function DashboardOverview() {
           subtitle={`Capital livre em ${wallets.length} carteiras`}
           color="#00B4D8"
           icon={Wallet}
+        />
+        <KPICard
+          title="Bloqueado"
+          value={fmt(totals.blocked, primaryCurrency)}
+          subtitle="Fundos retidos — compliance / disputas"
+          color="#FF5252"
+          icon={ShieldAlert}
         />
       </div>
 
@@ -196,7 +223,7 @@ export default function DashboardOverview() {
             </button>
           </div>
 
-          {ledgerQuery.isLoading ? (
+          {transactionsQuery.isLoading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center gap-3">
@@ -205,44 +232,47 @@ export default function DashboardOverview() {
                 </div>
               ))}
             </div>
-          ) : recentEntries.length === 0 ? (
+          ) : transactions.length === 0 ? (
             <p className="nex-mono text-xs" style={{ color: '#606060' }}>Sem transações recentes.</p>
           ) : (
             <div className="space-y-1 max-h-80 overflow-y-auto cyber-scrollbar">
-              {recentEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between py-2.5 px-2 rounded-lg transition-colors"
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <LedgerStatusDot status={entry.status} />
-                    <TypeBadge type={entry.type} />
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium truncate" style={{ color: '#FFFFFF' }}>
-                        {entry.description || entry.reference || entry.type}
-                      </p>
-                      <p className="nex-mono text-[10px] truncate" style={{ color: '#606060' }}>
-                        {new Date(entry.created_at).toLocaleString('pt-PT')}
-                        {entry.clears_at && (
-                          <span style={{ color: '#FFB800' }}> · Clears: {new Date(entry.clears_at).toLocaleDateString('pt-PT')}</span>
-                        )}
+              {transactions.map((entry) => {
+                const credit = isCreditType(entry.type);
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between py-2.5 px-2 rounded-lg transition-colors"
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <TransactionStatusDot status={entry.status} />
+                      <TypeBadge type={entry.type} />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate" style={{ color: '#FFFFFF' }}>
+                          {entry.description || entry.type}
+                        </p>
+                        <p className="nex-mono text-[10px] truncate" style={{ color: '#606060' }}>
+                          {new Date(entry.createdAt).toLocaleString('pt-PT')}
+                          {entry.feeApplied > 0 && (
+                            <span style={{ color: '#FF5252' }}> · Fee: {fmt(entry.feeApplied, entry.currency)}</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <p
+                        className="nex-mono text-sm font-semibold"
+                        style={{
+                          color: credit ? '#00D4AA' : '#FF5252',
+                        }}
+                      >
+                        {credit ? '+' : '-'}
+                        {fmt(entry.amount, entry.currency)}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0 ml-2">
-                    <p
-                      className="nex-mono text-sm font-semibold"
-                      style={{
-                        color: entry.direction === 'CREDIT' ? '#00D4AA' : '#FF5252',
-                      }}
-                    >
-                      {entry.direction === 'CREDIT' ? '+' : '-'}
-                      {fmt(entry.amount, entry.currency)}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -256,5 +286,3 @@ export default function DashboardOverview() {
     </div>
   );
 }
-
-

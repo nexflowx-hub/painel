@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useWallets, usePayout } from '@/hooks/use-wallets';
+import { payoutApi } from '@/lib/api/atlas-client';
+import type { Currency, Wallet, PayoutRequest, PayoutResponse } from '@/types/atlas';
 import { Banknote, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
 import {
   Dialog,
@@ -11,7 +13,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { Wallet, PayoutMethod } from '@/lib/api/contracts';
+
+type PayoutMethod = PayoutRequest['method'];
 
 const methods: { value: PayoutMethod; label: string; icon: string }[] = [
   { value: 'IBAN', label: 'IBAN', icon: '🏦' },
@@ -35,17 +38,18 @@ export default function PayoutWidget() {
   const allWallets: Wallet[] = wallets ?? [];
 
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('EUR');
+  const [currency, setCurrency] = useState<Currency>('EUR');
   const [method, setMethod] = useState<PayoutMethod>('IBAN');
   const [destination, setDestination] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [result, setResult] = useState<PayoutResponse | null>(null);
 
-  const selectedWallet = allWallets.find((w) => w.currency_code === currency);
+  const selectedWallet = allWallets.find((w) => w.currency === currency);
   const parsedAmount = parseFloat(amount) || 0;
 
   const canSubmit = parsedAmount > 0 && destination.trim().length > 0 &&
-    selectedWallet && parsedAmount <= selectedWallet.balance_available;
+    selectedWallet && parsedAmount <= selectedWallet.balanceAvailable;
 
   const handleSubmit = () => {
     if (canSubmit) setConfirmOpen(true);
@@ -53,7 +57,7 @@ export default function PayoutWidget() {
 
   const handleConfirm = async () => {
     try {
-      await payoutMut.mutateAsync({
+      const payoutResult = await payoutMut.mutateAsync({
         amount: parsedAmount,
         currency,
         method,
@@ -61,15 +65,19 @@ export default function PayoutWidget() {
       });
       setConfirmOpen(false);
       setSuccess(true);
+      setResult(payoutResult);
       setAmount('');
       setDestination('');
-      setTimeout(() => setSuccess(false), 5000);
+      setTimeout(() => {
+        setSuccess(false);
+        setResult(null);
+      }, 5000);
     } catch {
       // error handled by mutation
     }
   };
 
-  const availableCurrencies = [...new Set(allWallets.map((w) => w.currency_code))];
+  const availableCurrencies = [...new Set(allWallets.map((w) => w.currency))];
 
   return (
     <div className="max-w-lg mx-auto space-y-6 animate-fade-up">
@@ -79,9 +87,24 @@ export default function PayoutWidget() {
           style={{ borderColor: 'rgba(0,212,170,0.2)' }}
         >
           <CheckCircle className="w-5 h-5" style={{ color: '#00D4AA' }} />
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-medium" style={{ color: '#00D4AA' }}>Levantamento solicitado com sucesso!</p>
-            <p className="nex-mono text-[11px]" style={{ color: '#A0A0A0' }}>O pedido será processado em breve.</p>
+            {result && (
+              <div className="nex-mono text-[11px] mt-1 space-y-0.5" style={{ color: '#A0A0A0' }}>
+                {result.transactionId && (
+                  <p>Tx: <span style={{ color: '#00B4D8' }} className="truncate">{result.transactionId}</span></p>
+                )}
+                {result.status && (
+                  <p>Status: <span style={{ color: '#FFB800' }}>{result.status}</span></p>
+                )}
+                {result.message && (
+                  <p className="truncate">{result.message}</p>
+                )}
+                {result.estimatedSettlement && (
+                  <p>Previsão: {new Date(result.estimatedSettlement).toLocaleString('pt-PT')}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -107,7 +130,7 @@ export default function PayoutWidget() {
           />
           {selectedWallet && (
             <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-              Disponível: <span style={{ color: '#00D4AA' }}>{fmt(selectedWallet.balance_available, currency)}</span>
+              Disponível: <span style={{ color: '#00D4AA' }}>{fmt(selectedWallet.balanceAvailable, currency)}</span>
             </p>
           )}
         </div>
@@ -119,7 +142,7 @@ export default function PayoutWidget() {
           </label>
           <select
             value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
+            onChange={(e) => setCurrency(e.target.value as Currency)}
             className="neon-input w-full rounded-lg px-4 py-3 text-sm"
           >
             {availableCurrencies.map((c) => (

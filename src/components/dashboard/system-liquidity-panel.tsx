@@ -5,8 +5,8 @@ import { useAuthStore, isAdmin } from '@/lib/auth-store';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Droplets, AlertTriangle, Wallet, TrendingUp, Coins } from 'lucide-react';
-import type { Wallet as WalletType, WalletType as WT } from '@/lib/api/contracts';
+import { AlertTriangle, Wallet as WalletIcon, TrendingUp, Coins } from 'lucide-react';
+import type { Wallet as WalletType } from '@/types/atlas';
 
 function fmt(n: number, code: string) {
   try {
@@ -32,31 +32,27 @@ export default function SystemLiquidityPanel() {
     );
   }
 
-  // Group by type
-  const treasuryWallets = allWallets.filter((w) => w.type === 'treasury');
-  const fxPoolWallets = allWallets.filter((w) => w.type === 'fx_pool');
-  const feeWallets = allWallets.filter((w) => w.type === 'fee');
-  const merchantWallets = allWallets.filter((w) => w.type === 'merchant');
-
-  const treasuryTotal = treasuryWallets.reduce((s, w) => s + w.balance_available, 0);
-  const fxPoolTotal = fxPoolWallets.reduce((s, w) => s + w.balance_available, 0);
-  const feeTotal = feeWallets.reduce((s, w) => s + w.balance_available, 0);
-  const merchantTotal = merchantWallets.reduce((s, w) => s + w.balance_available, 0);
+  // 4-Balance aggregation
+  const totalIncoming = allWallets.reduce((s, w) => s + w.balanceIncoming, 0);
+  const totalPending = allWallets.reduce((s, w) => s + w.balancePending, 0);
+  const totalAvailable = allWallets.reduce((s, w) => s + w.balanceAvailable, 0);
+  const totalBlocked = allWallets.reduce((s, w) => s + w.balanceBlocked, 0);
 
   // Group all wallets by currency for breakdown
   const byCurrency = allWallets.reduce<Record<string, { total: number; available: number; clearing: number; count: number }>>(
     (acc, w) => {
-      if (!acc[w.currency_code]) acc[w.currency_code] = { total: 0, available: 0, clearing: 0, count: 0 };
-      acc[w.currency_code].total += w.balance_total;
-      acc[w.currency_code].available += w.balance_available;
-      acc[w.currency_code].clearing += w.balance_total - w.balance_available;
-      acc[w.currency_code].count += 1;
+      const balanceTotal = w.balanceIncoming + w.balancePending + w.balanceAvailable + w.balanceBlocked;
+      if (!acc[w.currency]) acc[w.currency] = { total: 0, available: 0, clearing: 0, count: 0 };
+      acc[w.currency].total += balanceTotal;
+      acc[w.currency].available += w.balanceAvailable;
+      acc[w.currency].clearing += balanceTotal - w.balanceAvailable;
+      acc[w.currency].count += 1;
       return acc;
     },
     {}
   );
 
-  const totalSystemValue = Object.values(byCurrency).reduce((s, c) => s + c.available, 0);
+  const totalSystemValue = totalAvailable;
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -65,48 +61,48 @@ export default function SystemLiquidityPanel() {
         <div className="glass-panel p-5 hover-lift">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.15)' }}>
-              <Wallet className="w-4 h-4" style={{ color: '#00D4AA' }} />
+              <TrendingUp className="w-4 h-4" style={{ color: '#00D4AA' }} />
             </div>
-            <span className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>Tesouraria</span>
+            <span className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>Incoming</span>
           </div>
           <p className="text-lg font-bold nex-mono" style={{ color: '#00D4AA' }}>
-            {treasuryWallets.length > 0 ? fmt(treasuryTotal, treasuryWallets[0]?.currency_code || 'EUR') : '€0.00'}
+            {allWallets.length > 0 ? fmt(totalIncoming, allWallets[0]?.currency || 'EUR') : '€0.00'}
           </p>
-          <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>{treasuryWallets.length} carteiras</p>
+          <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>{allWallets.length} carteiras</p>
         </div>
 
         <div className="glass-panel p-5 hover-lift">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,180,216,0.08)', border: '1px solid rgba(0,180,216,0.15)' }}>
-              <TrendingUp className="w-4 h-4" style={{ color: '#00B4D8' }} />
+              <Coins className="w-4 h-4" style={{ color: '#00B4D8' }} />
             </div>
-            <span className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>FX Pool</span>
+            <span className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>Pending</span>
           </div>
           <p className="text-lg font-bold nex-mono" style={{ color: '#00B4D8' }}>
-            {fxPoolWallets.length > 0 ? fmt(fxPoolTotal, fxPoolWallets[0]?.currency_code || 'EUR') : '€0.00'}
+            {allWallets.length > 0 ? fmt(totalPending, allWallets[0]?.currency || 'EUR') : '€0.00'}
           </p>
-          <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>{fxPoolWallets.length} carteiras</p>
+          <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>{allWallets.length} carteiras</p>
         </div>
 
         <div className="glass-panel p-5 hover-lift">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,184,0,0.08)', border: '1px solid rgba(255,184,0,0.15)' }}>
-              <Coins className="w-4 h-4" style={{ color: '#FFB800' }} />
+              <AlertTriangle className="w-4 h-4" style={{ color: '#FFB800' }} />
             </div>
-            <span className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>Taxas</span>
+            <span className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>Blocked</span>
           </div>
           <p className="text-lg font-bold nex-mono" style={{ color: '#FFB800' }}>
-            {feeWallets.length > 0 ? fmt(feeTotal, feeWallets[0]?.currency_code || 'EUR') : '€0.00'}
+            {allWallets.length > 0 ? fmt(totalBlocked, allWallets[0]?.currency || 'EUR') : '€0.00'}
           </p>
-          <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>{feeWallets.length} carteiras</p>
+          <p className="nex-mono text-[10px]" style={{ color: '#606060' }}>{allWallets.length} carteiras</p>
         </div>
 
         <div className="glass-panel p-5 hover-lift glow-box">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.2)' }}>
-              <Droplets className="w-4 h-4" style={{ color: '#00D4AA' }} />
+              <WalletIcon className="w-4 h-4" style={{ color: '#00D4AA' }} />
             </div>
-            <span className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>Total Sistema</span>
+            <span className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>Available</span>
           </div>
           <p className="text-lg font-bold nex-mono neon-glow" style={{ color: '#00D4AA' }}>
             ~{fmtShort(totalSystemValue)}

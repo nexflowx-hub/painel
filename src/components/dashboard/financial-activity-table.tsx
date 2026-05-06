@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useLedger } from '@/hooks/use-wallets';
+import { useTransactions } from '@/hooks/use-wallets';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
@@ -12,7 +12,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Filter, TrendingUp, Hash } from 'lucide-react';
-import type { LedgerEntry, LedgerEntryType, LedgerEntryStatus } from '@/lib/api/contracts';
+import type {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+  Currency,
+  TransactionFilters,
+} from '@/types/atlas';
 
 function fmt(n: number, code: string) {
   try {
@@ -22,34 +28,45 @@ function fmt(n: number, code: string) {
   }
 }
 
+/** Derive credit/debit direction from transaction type */
+function isCreditType(type: TransactionType): boolean {
+  return type === 'PROXY_INCOMING' || type === 'SETTLEMENT';
+}
+
 const typeBadgeMap: Record<string, string> = {
-  PAYIN: 'neon-badge-teal',
-  SWAP: 'neon-badge-cyan',
+  PROXY_INCOMING: 'neon-badge-teal',
+  SETTLEMENT: 'neon-badge-teal',
   PAYOUT: 'neon-badge-amber',
+  SWAP: 'neon-badge-cyan',
+  TRANSFER: 'neon-badge-purple',
   FEE: 'neon-badge-red',
-  REFUND: 'neon-badge-purple',
 };
 
 const statusDotMap: Record<string, string> = {
-  cleared: 'active',
-  pending: 'warning',
-  failed: 'error',
+  INCOMING: 'active',
+  PENDING: 'warning',
+  COMPLETED: 'active',
+  BLOCKED: 'error',
+  FAILED: 'error',
 };
+
+const typeFilters: string[] = ['all', 'PROXY_INCOMING', 'SETTLEMENT', 'PAYOUT', 'SWAP', 'TRANSFER', 'FEE'];
+const statusFilters: string[] = ['all', 'INCOMING', 'PENDING', 'COMPLETED', 'BLOCKED', 'FAILED'];
 
 export default function FinancialActivityTable() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const { data, isLoading } = useLedger();
-  const entries: LedgerEntry[] = data?.data ?? [];
+  const transactionsQuery = useTransactions();
+  const transactions: Transaction[] = transactionsQuery.data?.data ?? [];
 
   const filtered = useMemo(() => {
-    return entries.filter((e) => {
+    return transactions.filter((e) => {
       if (typeFilter !== 'all' && e.type !== typeFilter) return false;
       if (statusFilter !== 'all' && e.status !== statusFilter) return false;
       return true;
     });
-  }, [entries, typeFilter, statusFilter]);
+  }, [transactions, typeFilter, statusFilter]);
 
   const totalVolume = filtered.reduce((s, e) => s + e.amount, 0);
 
@@ -70,13 +87,13 @@ export default function FinancialActivityTable() {
         <div className="glass-panel p-4 text-center">
           <p className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>Créditos</p>
           <p className="text-lg font-bold nex-mono mt-1" style={{ color: '#00D4AA' }}>
-            {filtered.filter((e) => e.direction === 'CREDIT').length}
+            {filtered.filter((e) => isCreditType(e.type)).length}
           </p>
         </div>
         <div className="glass-panel p-4 text-center">
           <p className="nex-mono text-[10px] uppercase tracking-wider" style={{ color: '#606060' }}>Débitos</p>
           <p className="text-lg font-bold nex-mono mt-1" style={{ color: '#FF5252' }}>
-            {filtered.filter((e) => e.direction === 'DEBIT').length}
+            {filtered.filter((e) => !isCreditType(e.type)).length}
           </p>
         </div>
       </div>
@@ -91,7 +108,7 @@ export default function FinancialActivityTable() {
           <div className="flex items-center gap-2">
             <span className="nex-mono text-[10px]" style={{ color: '#606060' }}>Tipo:</span>
             <div className="flex gap-1.5">
-              {['all', 'PAYIN', 'SWAP', 'PAYOUT', 'FEE', 'REFUND'].map((t) => (
+              {typeFilters.map((t) => (
                 <button
                   key={t}
                   onClick={() => setTypeFilter(t)}
@@ -106,14 +123,14 @@ export default function FinancialActivityTable() {
           <div className="flex items-center gap-2">
             <span className="nex-mono text-[10px]" style={{ color: '#606060' }}>Estado:</span>
             <div className="flex gap-1.5">
-              {['all', 'pending', 'cleared', 'failed'].map((s) => (
+              {statusFilters.map((s) => (
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className={`neon-badge cursor-pointer transition-all ${statusFilter === s ? (s === 'cleared' ? 'neon-badge-teal' : s === 'pending' ? 'neon-badge-amber' : 'neon-badge-red') : ''}`}
+                  className={`neon-badge cursor-pointer transition-all ${statusFilter === s ? (s === 'COMPLETED' || s === 'INCOMING' ? 'neon-badge-teal' : s === 'PENDING' ? 'neon-badge-amber' : 'neon-badge-red') : ''}`}
                   style={statusFilter !== s ? { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: '#606060' } : {}}
                 >
-                  {s === 'all' ? 'TODOS' : s.toUpperCase()}
+                  {s === 'all' ? 'TODOS' : s}
                 </button>
               ))}
             </div>
@@ -142,7 +159,7 @@ export default function FinancialActivityTable() {
 
         <TabsContent value="ledger" className="mt-4">
           <div className="glass-panel overflow-hidden">
-            {isLoading ? (
+            {transactionsQuery.isLoading ? (
               <div className="p-8 text-center">
                 <div className="inline-block w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#00D4AA', borderTopColor: 'transparent' }} />
                 <p className="nex-mono text-xs mt-3" style={{ color: '#606060' }}>A carregar ledger...</p>
@@ -160,57 +177,60 @@ export default function FinancialActivityTable() {
                       <TableHead className="nex-mono text-[10px] uppercase" style={{ color: '#606060' }}>Tipo</TableHead>
                       <TableHead className="nex-mono text-[10px] uppercase" style={{ color: '#606060' }}>Direção</TableHead>
                       <TableHead className="nex-mono text-[10px] uppercase text-right" style={{ color: '#606060' }}>Montante</TableHead>
+                      <TableHead className="nex-mono text-[10px] uppercase" style={{ color: '#606060' }}>Taxa</TableHead>
                       <TableHead className="nex-mono text-[10px] uppercase" style={{ color: '#606060' }}>Descrição</TableHead>
-                      <TableHead className="nex-mono text-[10px] uppercase" style={{ color: '#606060' }}>Referência</TableHead>
                       <TableHead className="nex-mono text-[10px] uppercase text-right" style={{ color: '#606060' }}>Data</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((entry) => (
-                      <TableRow
-                        key={entry.id}
-                        style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}
-                        className="hover:bg-[rgba(0,212,170,0.02)] transition-colors"
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className={`status-dot ${statusDotMap[entry.status] || 'inactive'}`} />
-                            <span className="nex-mono text-[10px] capitalize" style={{ color: '#A0A0A0' }}>{entry.status}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`neon-badge ${typeBadgeMap[entry.type] || 'neon-badge-teal'}`}>{entry.type}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="nex-mono text-xs" style={{ color: entry.direction === 'CREDIT' ? '#00D4AA' : '#FF5252' }}>
-                            {entry.direction}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span
-                            className="nex-mono text-xs font-semibold"
-                            style={{ color: entry.direction === 'CREDIT' ? '#00D4AA' : '#FF5252' }}
-                          >
-                            {entry.direction === 'CREDIT' ? '+' : '-'}{fmt(entry.amount, entry.currency)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="nex-mono text-xs truncate block max-w-[200px]" style={{ color: '#A0A0A0' }}>
-                            {entry.description || '—'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-                            {entry.reference || '—'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span className="nex-mono text-[10px]" style={{ color: '#606060' }}>
-                            {new Date(entry.created_at).toLocaleDateString('pt-PT')}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filtered.map((entry) => {
+                      const credit = isCreditType(entry.type);
+                      return (
+                        <TableRow
+                          key={entry.id}
+                          style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}
+                          className="hover:bg-[rgba(0,212,170,0.02)] transition-colors"
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className={`status-dot ${statusDotMap[entry.status] || 'inactive'}`} />
+                              <span className="nex-mono text-[10px]" style={{ color: '#A0A0A0' }}>{entry.status}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`neon-badge ${typeBadgeMap[entry.type] || 'neon-badge-teal'}`}>{entry.type}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="nex-mono text-xs" style={{ color: credit ? '#00D4AA' : '#FF5252' }}>
+                              {credit ? 'CREDIT' : 'DEBIT'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span
+                              className="nex-mono text-xs font-semibold"
+                              style={{ color: credit ? '#00D4AA' : '#FF5252' }}
+                            >
+                              {credit ? '+' : '-'}{fmt(entry.amount, entry.currency)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="nex-mono text-xs" style={{ color: '#FF5252' }}>
+                              {entry.feeApplied > 0 ? fmt(entry.feeApplied, entry.currency) : '—'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="nex-mono text-xs truncate block max-w-[200px]" style={{ color: '#A0A0A0' }}>
+                              {entry.description || '—'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="nex-mono text-[10px]" style={{ color: '#606060' }}>
+                              {new Date(entry.createdAt).toLocaleDateString('pt-PT')}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
